@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SalonPro.Application.Features.Appointments.DTOs;
+using SalonPro.Domain.Enums;
 using SalonPro.Domain.Interfaces;
 
 namespace SalonPro.Application.Features.Appointments.Queries.GetWeeklyCalendar;
@@ -16,51 +17,49 @@ public class GetWeeklyCalendarQueryHandler : IRequestHandler<GetWeeklyCalendarQu
 
     public async Task<WeeklyCalendarDto> Handle(GetWeeklyCalendarQuery request, CancellationToken cancellationToken)
     {
-        var startDate = request.WeekStartDate.Date;
-        var endDate = startDate.AddDays(7);
+        var weekStart = request.WeekStartDate.Date;
+        var weekEnd = weekStart.AddDays(7);
 
-        var query = _unitOfWork.Appointments.Query()
+        var appointments = await _unitOfWork.Appointments.Query()
             .Include(a => a.Client)
             .Include(a => a.StaffMember)
             .Include(a => a.AppointmentServices)
                 .ThenInclude(aps => aps.Service)
-            .Where(a => a.StartTime >= startDate && a.StartTime < endDate)
-            .AsNoTracking();
-
-        if (request.StaffMemberId.HasValue)
-        {
-            query = query.Where(a => a.StaffMemberId == request.StaffMemberId.Value);
-        }
-
-        var appointments = await query
+                    .ThenInclude(s => s.Category)
+            .Where(a => a.StartTime >= weekStart && a.StartTime < weekEnd)
             .OrderBy(a => a.StartTime)
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
 
-        var days = Enumerable.Range(0, 7).Select(i =>
-        {
-            var date = startDate.AddDays(i);
-            var dayAppointments = appointments
-                .Where(a => a.StartTime.Date == date.Date)
-                .Select(a => new AppointmentDto(
-                    a.Id,
-                    a.Client.FullName,
-                    a.StaffMember.FullName,
-                    a.StartTime,
-                    a.EndTime,
-                    a.Status,
-                    a.TotalPrice,
-                    a.Notes,
-                    a.AppointmentServices.Select(aps => new AppointmentServiceDto(
-                        aps.ServiceId,
-                        aps.Service.Name,
-                        aps.Price,
-                        aps.DurationMinutes
-                    )).ToList()
-                )).ToList();
+        var staffSchedules = appointments
+            .GroupBy(a => a.StaffMemberId)
+            .Select(g =>
+            {
+                var staffMember = g.First().StaffMember;
+                var calendarAppointments = g.Select(a =>
+                {
+                    var firstService = a.AppointmentServices.FirstOrDefault();
+                    var category = firstService?.Service.Category;
+                    return new CalendarAppointmentDto(
+                        a.Id,
+                        a.Client.FullName,
+                        firstService?.Service.Name ?? string.Empty,
+                        a.StartTime,
+                        a.EndTime,
+                        category?.Type ?? ServiceCategoryType.Other,
+                        category?.ColorHex ?? "#CCCCCC"
+                    );
+                }).ToList();
 
-            return new CalendarDayDto(date, dayAppointments);
-        }).ToList();
+                return new StaffCalendarDto(
+                    staffMember.Id,
+                    staffMember.FullName,
+                    calendarAppointments.Count,
+                    calendarAppointments
+                );
+            })
+            .ToList();
 
-        return new WeeklyCalendarDto(startDate, endDate.AddDays(-1), days);
+        return new WeeklyCalendarDto(staffSchedules);
     }
 }

@@ -1,5 +1,6 @@
 using MediatR;
 using SalonPro.Application.Common.Exceptions;
+using SalonPro.Domain.Entities;
 using SalonPro.Domain.Interfaces;
 
 namespace SalonPro.Application.Features.Clients.Commands.UpdateClient;
@@ -16,7 +17,7 @@ public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, U
     public async Task<Unit> Handle(UpdateClientCommand request, CancellationToken cancellationToken)
     {
         var client = await _unitOfWork.Clients.GetByIdAsync(request.Id, cancellationToken)
-            ?? throw new NotFoundException(nameof(Domain.Entities.Client), request.Id);
+            ?? throw new NotFoundException(nameof(Client), request.Id);
 
         client.FirstName = request.FirstName;
         client.LastName = request.LastName;

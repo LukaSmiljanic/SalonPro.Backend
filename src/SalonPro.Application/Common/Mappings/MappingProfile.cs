@@ -3,10 +3,9 @@ using SalonPro.Application.Features.Appointments.DTOs;
 using SalonPro.Application.Features.Auth.DTOs;
 using SalonPro.Application.Features.Clients.DTOs;
 using SalonPro.Application.Features.Services.DTOs;
-using SalonPro.Application.Features.ServiceCategories.DTOs;
 using SalonPro.Application.Features.Staff.DTOs;
-using SalonPro.Application.Features.WorkingHours.DTOs;
 using SalonPro.Domain.Entities;
+using SalonPro.Domain.Enums;
 
 namespace SalonPro.Application.Common.Mappings;
 
@@ -15,53 +14,90 @@ public class MappingProfile : Profile
     public MappingProfile()
     {
         // Auth
-        CreateMap<User, AuthResponseDto>()
-            .ForMember(d => d.FullName, opt => opt.MapFrom(s => $"{s.FirstName} {s.LastName}"))
-            .ForMember(d => d.AccessToken, opt => opt.Ignore())
-            .ForMember(d => d.RefreshToken, opt => opt.Ignore())
-            .ForMember(d => d.ExpiresAt, opt => opt.Ignore());
+        CreateMap<User, UserDto>()
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName));
 
-        // Clients
+        // Client
         CreateMap<Client, ClientDto>()
-            .ForMember(d => d.FullName, opt => opt.MapFrom(s => $"{s.FirstName} {s.LastName}"));
-        CreateMap<CreateClientCommand, Client>();
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName));
 
-        // Services
-        CreateMap<Service, ServiceDto>();
-        CreateMap<CreateServiceCommand, Service>();
-        CreateMap<UpdateServiceCommand, Service>();
+        CreateMap<Client, ClientListDto>()
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName))
+            .ForMember(dest => dest.LastVisitDate, opt => opt.MapFrom(src =>
+                src.Appointments
+                    .Where(a => a.Status == AppointmentStatus.Completed)
+                    .OrderByDescending(a => a.StartTime)
+                    .Select(a => (DateTime?)a.StartTime)
+                    .FirstOrDefault()))
+            .ForMember(dest => dest.FavoriteService, opt => opt.MapFrom(src =>
+                src.Appointments
+                    .Where(a => a.Status == AppointmentStatus.Completed)
+                    .SelectMany(a => a.AppointmentServices)
+                    .GroupBy(aps => aps.Service.Name)
+                    .OrderByDescending(g => g.Count())
+                    .Select(g => g.Key)
+                    .FirstOrDefault()));
 
-        // Service Categories
-        CreateMap<ServiceCategory, ServiceCategoryDto>();
-        CreateMap<CreateServiceCategoryCommand, ServiceCategory>();
-        CreateMap<UpdateServiceCategoryCommand, ServiceCategory>();
+        CreateMap<ClientNote, ClientNoteDto>();
 
-        // Staff
-        CreateMap<StaffMember, StaffMemberDto>()
-            .ForMember(d => d.FullName, opt => opt.MapFrom(s => $"{s.FirstName} {s.LastName}"));
-        CreateMap<CreateStaffMemberCommand, StaffMember>();
-        CreateMap<UpdateStaffMemberCommand, StaffMember>();
+        CreateMap<Client, ClientDetailDto>()
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName))
+            .ForMember(dest => dest.TotalVisits, opt => opt.MapFrom(src =>
+                src.Appointments.Count(a => a.Status == AppointmentStatus.Completed)))
+            .ForMember(dest => dest.TotalSpent, opt => opt.MapFrom(src =>
+                src.Appointments
+                    .Where(a => a.Status == AppointmentStatus.Completed)
+                    .Sum(a => a.TotalPrice)))
+            .ForMember(dest => dest.LastVisitDate, opt => opt.MapFrom(src =>
+                src.Appointments
+                    .Where(a => a.Status == AppointmentStatus.Completed)
+                    .OrderByDescending(a => a.StartTime)
+                    .Select(a => (DateTime?)a.StartTime)
+                    .FirstOrDefault()))
+            .ForMember(dest => dest.VisitHistory, opt => opt.MapFrom(src =>
+                src.Appointments
+                    .Where(a => a.Status == AppointmentStatus.Completed)
+                    .OrderByDescending(a => a.StartTime)
+                    .Select(a => new VisitHistoryDto(
+                        a.StartTime,
+                        string.Join(", ", a.AppointmentServices.Select(aps => aps.Service.Name)),
+                        a.StaffMember.FullName,
+                        a.TotalPrice))))
+            .ForMember(dest => dest.ClientNotes, opt => opt.MapFrom(src =>
+                src.ClientNotes
+                    .OrderByDescending(n => n.CreatedAt)
+                    .Select(n => new ClientNoteDto(n.Id, n.Content, n.CreatedAt, n.CreatedBy))));
 
-        // Appointments
+        // Appointment
         CreateMap<Appointment, AppointmentDto>()
-            .ForMember(d => d.ClientName, opt => opt.MapFrom(s => s.Client != null ? $"{s.Client.FirstName} {s.Client.LastName}" : string.Empty))
-            .ForMember(d => d.StaffMemberName, opt => opt.MapFrom(s => s.StaffMember != null ? $"{s.StaffMember.FirstName} {s.StaffMember.LastName}" : string.Empty))
-            .ForMember(d => d.Services, opt => opt.MapFrom(s => s.AppointmentServices));
-        CreateMap<AppointmentService, AppointmentServiceDto>()
-            .ForMember(d => d.ServiceName, opt => opt.MapFrom(s => s.Service != null ? s.Service.Name : string.Empty));
+            .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Client.FullName))
+            .ForMember(dest => dest.StaffMemberName, opt => opt.MapFrom(src => src.StaffMember.FullName))
+            .ForMember(dest => dest.ServiceNames, opt => opt.MapFrom(src =>
+                string.Join(", ", src.AppointmentServices.Select(aps => aps.Service.Name))))
+            .ForMember(dest => dest.CategoryColorHex, opt => opt.MapFrom(src =>
+                src.AppointmentServices.FirstOrDefault() != null
+                    ? src.AppointmentServices.First().Service.Category.ColorHex
+                    : null));
 
-        // Working Hours
+        CreateMap<AppointmentService, AppointmentServiceDetailDto>()
+            .ForMember(dest => dest.ServiceName, opt => opt.MapFrom(src => src.Service.Name));
+
+        CreateMap<Appointment, AppointmentDetailDto>()
+            .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Client.FullName))
+            .ForMember(dest => dest.StaffMemberName, opt => opt.MapFrom(src => src.StaffMember.FullName))
+            .ForMember(dest => dest.Services, opt => opt.MapFrom(src => src.AppointmentServices));
+
+        // Service
+        CreateMap<Service, ServiceDto>()
+            .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category.Name))
+            .ForMember(dest => dest.CategoryType, opt => opt.MapFrom(src => src.Category.Type))
+            .ForMember(dest => dest.CategoryColorHex, opt => opt.MapFrom(src => src.Category.ColorHex));
+
+        // StaffMember
+        CreateMap<StaffMember, StaffMemberDto>()
+            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName))
+            .ForMember(dest => dest.AppointmentCountToday, opt => opt.Ignore());
+
         CreateMap<WorkingHours, WorkingHoursDto>();
-        CreateMap<UpsertWorkingHoursCommand, WorkingHours>();
     }
 }
-
-// Command stubs to satisfy AutoMapper (real commands defined in Features)
-public record CreateClientCommand;
-public record CreateServiceCommand;
-public record UpdateServiceCommand;
-public record CreateServiceCategoryCommand;
-public record UpdateServiceCategoryCommand;
-public record CreateStaffMemberCommand;
-public record UpdateStaffMemberCommand;
-public record UpsertWorkingHoursCommand;

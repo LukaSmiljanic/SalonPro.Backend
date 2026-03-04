@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Application.Features.Clients.DTOs;
+using SalonPro.Domain.Entities;
 using SalonPro.Domain.Enums;
 using SalonPro.Domain.Interfaces;
 
@@ -27,7 +28,7 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             .Include(c => c.ClientNotes)
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == request.Id, cancellationToken)
-            ?? throw new NotFoundException(nameof(Domain.Entities.Client), request.Id);
+            ?? throw new NotFoundException(nameof(Client), request.Id);
 
         var completedAppointments = client.Appointments
             .Where(a => a.Status == AppointmentStatus.Completed)
