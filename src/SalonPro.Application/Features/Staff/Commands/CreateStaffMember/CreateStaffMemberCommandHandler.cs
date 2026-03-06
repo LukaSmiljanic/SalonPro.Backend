@@ -29,7 +29,8 @@ public class CreateStaffMemberCommandHandler : IRequestHandler<CreateStaffMember
             LastName = request.LastName,
             Email = request.Email,
             Phone = request.Phone,
-            Specialization = request.Specialization,
+            Title = request.Specialization ?? request.Title,
+            ColorIndex = request.ColorIndex,
             IsActive = true
         };
 

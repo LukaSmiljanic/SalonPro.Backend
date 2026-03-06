@@ -12,6 +12,9 @@ public class ServiceCategory : BaseAuditableEntity, ITenantEntity
     public ServiceCategoryType Type { get; set; } = ServiceCategoryType.Other;
     public bool IsActive { get; set; } = true;
 
+    /// <summary>Alias for Color (hex format).</summary>
+    public string? ColorHex { get => Color; set => Color = value; }
+
     // Navigation
     public Tenant Tenant { get; set; } = null!;
     public ICollection<Service> Services { get; set; } = new List<Service>();

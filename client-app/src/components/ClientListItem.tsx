@@ -10,8 +10,11 @@ interface ClientListItemProps {
 }
 
 export const ClientListItem: React.FC<ClientListItemProps> = ({ client, onClick, selected }) => {
-  const fullName = `${client.firstName} ${client.lastName}`;
-  const initials = `${client.firstName[0]}${client.lastName[0]}`.toUpperCase();
+  const first = (client.firstName || '').trim();
+  const last = (client.lastName || '').trim();
+  const fullName = [first, last].filter(Boolean).join(' ') || '—';
+  const initials = (first[0] ?? '') + (last[0] ?? '');
+  const initialsDisplay = initials.toUpperCase() || '?';
   const lastVisitStr = client.lastVisit
     ? format(parseISO(client.lastVisit), 'MMM d, yyyy')
     : 'Never';
@@ -24,7 +27,7 @@ export const ClientListItem: React.FC<ClientListItemProps> = ({ client, onClick,
     >
       {/* Avatar */}
       <div className="w-10 h-10 rounded-full bg-primary-highlight flex items-center justify-center shrink-0">
-        <span className="text-sm font-semibold text-primary">{initials}</span>
+        <span className="text-sm font-semibold text-primary">{initialsDisplay}</span>
       </div>
 
       {/* Info */}

@@ -1,10 +1,24 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:7001/api';
+const API_BASE_URL =  'https://localhost:7001/api';
 
 const TOKEN_KEY = 'salonpro_token';
 const REFRESH_TOKEN_KEY = 'salonpro_refresh_token';
 const TENANT_KEY = 'salonpro_tenant_id';
+
+/** Ensure tenant id is a valid GUID string (with dashes) so backend parses it correctly */
+function normalizeTenantId(value: string | null): string | null {
+  if (!value || typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^[0-9a-fA-F-]{36}$/.test(trimmed)) return trimmed;
+  const hex = trimmed.replace(/-/g, '');
+  if (/^[0-9a-fA-F]+$/.test(hex) && hex.length <= 32) {
+    const padded = hex.padStart(32, '0');
+    return `${padded.slice(0, 8)}-${padded.slice(8, 12)}-${padded.slice(12, 16)}-${padded.slice(16, 20)}-${padded.slice(20, 32)}`;
+  }
+  return trimmed;
+}
 
 export const getStoredToken = (): string | null => localStorage.getItem(TOKEN_KEY);
 export const getStoredRefreshToken = (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -47,7 +61,7 @@ const apiClient = axios.create({
 // Request interceptor: attach auth headers
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   const token = getStoredToken();
-  const tenantId = getStoredTenantId();
+  const tenantId = normalizeTenantId(getStoredTenantId());
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

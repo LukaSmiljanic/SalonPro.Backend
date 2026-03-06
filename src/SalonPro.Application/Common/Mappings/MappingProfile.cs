@@ -17,12 +17,10 @@ public class MappingProfile : Profile
         CreateMap<User, UserDto>()
             .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName));
 
-        // Client
-        CreateMap<Client, ClientDto>()
-            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName));
+        // Client (FullName, IsVip, Tags now on entity)
+        CreateMap<Client, ClientDto>();
 
         CreateMap<Client, ClientListDto>()
-            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName))
             .ForMember(dest => dest.LastVisitDate, opt => opt.MapFrom(src =>
                 src.Appointments
                     .Where(a => a.Status == AppointmentStatus.Completed)
@@ -41,7 +39,6 @@ public class MappingProfile : Profile
         CreateMap<ClientNote, ClientNoteDto>();
 
         CreateMap<Client, ClientDetailDto>()
-            .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.FirstName + " " + src.LastName))
             .ForMember(dest => dest.TotalVisits, opt => opt.MapFrom(src =>
                 src.Appointments.Count(a => a.Status == AppointmentStatus.Completed)))
             .ForMember(dest => dest.TotalSpent, opt => opt.MapFrom(src =>
@@ -68,8 +65,8 @@ public class MappingProfile : Profile
                     .OrderByDescending(n => n.CreatedAt)
                     .Select(n => new ClientNoteDto(n.Id, n.Content, n.CreatedAt, n.CreatedBy))));
 
-        // Appointment
-        CreateMap<Appointment, AppointmentDto>()
+        // Appointment list (for calendar/list views)
+        CreateMap<Appointment, AppointmentListDto>()
             .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Client.FullName))
             .ForMember(dest => dest.StaffMemberName, opt => opt.MapFrom(src => src.StaffMember.FullName))
             .ForMember(dest => dest.ServiceNames, opt => opt.MapFrom(src =>
@@ -77,7 +74,13 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.CategoryColorHex, opt => opt.MapFrom(src =>
                 src.AppointmentServices.FirstOrDefault() != null
                     ? src.AppointmentServices.First().Service.Category.ColorHex
-                    : null));
+                    : (string?)null));
+
+        // Appointment detail
+        CreateMap<Appointment, AppointmentDto>()
+            .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Client.FullName))
+            .ForMember(dest => dest.StaffMemberName, opt => opt.MapFrom(src => src.StaffMember.FullName))
+            .ForMember(dest => dest.Services, opt => opt.MapFrom(src => src.AppointmentServices));
 
         CreateMap<AppointmentService, AppointmentServiceDetailDto>()
             .ForMember(dest => dest.ServiceName, opt => opt.MapFrom(src => src.Service.Name));

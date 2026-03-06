@@ -7,12 +7,12 @@ interface BadgeProps {
 }
 
 const statusMap: Record<AppointmentStatus, { label: string; className: string }> = {
-  Pending:    { label: 'Pending',     className: 'badge-pending' },
-  Confirmed:  { label: 'Confirmed',   className: 'badge-confirmed' },
-  InProgress: { label: 'In Progress', className: 'badge-in-progress' },
-  Completed:  { label: 'Completed',   className: 'badge-completed' },
-  Cancelled:  { label: 'Cancelled',   className: 'badge-cancelled' },
-  NoShow:     { label: 'No Show',     className: 'badge-no-show' },
+  Pending:    { label: 'Na čekanju',   className: 'badge-pending' },
+  Confirmed:  { label: 'Potvrđeno',    className: 'badge-confirmed' },
+  InProgress: { label: 'U toku',       className: 'badge-in-progress' },
+  Completed:  { label: 'Završeno',     className: 'badge-completed' },
+  Cancelled:  { label: 'Otkazano',     className: 'badge-cancelled' },
+  NoShow:     { label: 'Nije se pojavio', className: 'badge-no-show' },
 };
 
 export const Badge: React.FC<BadgeProps> = ({ status, className = '' }) => {

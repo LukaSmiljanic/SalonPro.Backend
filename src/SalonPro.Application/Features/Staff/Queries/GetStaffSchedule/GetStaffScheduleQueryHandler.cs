@@ -52,22 +52,27 @@ public class GetStaffScheduleQueryHandler : IRequestHandler<GetStaffScheduleQuer
                 wh.IsWorkingDay
             )).ToList();
 
-        var appointmentDtos = appointments.Select(a => new AppointmentDto(
-            a.Id,
-            a.Client.FullName,
-            a.StaffMember.FullName,
-            string.Join(", ", a.AppointmentServices.Select(aps => aps.Service.Name)),
-            a.StartTime,
-            a.EndTime,
-            a.Status,
-            a.TotalPrice,
-            a.AppointmentServices.FirstOrDefault()?.Service.Category.ColorHex
-        )).ToList();
+        var appointmentDtos = appointments.Select(a =>
+        {
+            var firstService = a.AppointmentServices.FirstOrDefault();
+            var category = firstService?.Service.Category;
+            return new AppointmentListDto(
+                a.Id,
+                a.Client.FullName,
+                a.StaffMember.FullName,
+                string.Join(", ", a.AppointmentServices.Select(aps => aps.Service.Name)),
+                a.StartTime,
+                a.EndTime,
+                a.Status,
+                a.TotalPrice,
+                category?.ColorHex ?? category?.Color
+            );
+        }).ToList();
 
         return new StaffScheduleDto(
             staffMember.Id,
             staffMember.FullName,
-            staffMember.Specialization,
+            staffMember.Specialization ?? staffMember.Title,
             staffMember.AvatarUrl,
             workingHoursDtos,
             appointmentDtos

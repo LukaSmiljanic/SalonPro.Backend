@@ -26,7 +26,7 @@ public class UpdateClientCommandHandler : IRequestHandler<UpdateClientCommand, U
         client.Notes = request.Notes;
         client.IsVip = request.IsVip;
         client.Tags = request.Tags;
-        client.LastModifiedAt = DateTime.UtcNow;
+        client.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Clients.Update(client);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

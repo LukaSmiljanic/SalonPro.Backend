@@ -31,7 +31,7 @@ public class StaffMemberConfiguration : IEntityTypeConfiguration<StaffMember>
         builder.HasOne(sm => sm.User)
             .WithMany()
             .HasForeignKey(sm => sm.UserId)
-            .OnDelete(DeleteBehavior.SetNull)
+            .OnDelete(DeleteBehavior.NoAction)
             .IsRequired(false);
     }
 }

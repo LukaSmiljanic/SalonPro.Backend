@@ -8,5 +8,7 @@ public record CreateClientCommand(
     string? Email,
     string? Phone,
     DateTime? DateOfBirth,
-    string? Notes
+    string? Notes,
+    bool IsVip = false,
+    string? Tags = null
 ) : IRequest<Guid>;

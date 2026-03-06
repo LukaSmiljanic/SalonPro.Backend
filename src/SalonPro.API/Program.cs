@@ -1,4 +1,6 @@
+using System.Text.Json.Serialization;
 using Microsoft.OpenApi.Models;
+using SalonPro.API.BackgroundServices;
 using SalonPro.API.Filters;
 using SalonPro.API.Middleware;
 using SalonPro.Application;
@@ -10,7 +12,11 @@ using SalonPro.Application.Common.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Services ─────────────────────────────────────────────────────────────
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // Swagger with JWT support
@@ -53,6 +59,7 @@ builder.Services.AddSwaggerGen(options =>
 // Application layers
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHostedService<CompletePastAppointmentsJob>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -76,10 +83,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors();
-app.UseMiddleware<TenantMiddleware>();
+app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
-app.UseMiddleware<ExceptionMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.MapControllers();
 
 // ── Seed database ─────────────────────────────────────────────────────────

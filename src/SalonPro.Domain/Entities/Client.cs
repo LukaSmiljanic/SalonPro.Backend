@@ -12,8 +12,11 @@ public class Client : BaseAuditableEntity, ITenantEntity
     public DateTime? DateOfBirth { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsVip { get; set; }
+    public string? Tags { get; set; }
 
-    // Navigation
+    /// <summary>Computed: FirstName + " " + LastName.</summary>
+    public string FullName => $"{FirstName} {LastName}".Trim();
     public Tenant Tenant { get; set; } = null!;
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     public ICollection<ClientNote> ClientNotes { get; set; } = new List<ClientNote>();

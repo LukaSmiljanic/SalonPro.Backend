@@ -12,6 +12,7 @@ public class Appointment : BaseAuditableEntity, ITenantEntity
     public DateTime EndTime { get; set; }
     public AppointmentStatus Status { get; set; } = AppointmentStatus.Scheduled;
     public string? Notes { get; set; }
+    public string? CancellationReason { get; set; }
     public decimal TotalPrice { get; set; }
     public int TotalDurationMinutes { get; set; }
 

@@ -15,6 +15,12 @@ public class StaffMember : BaseAuditableEntity, ITenantEntity
     public bool IsActive { get; set; } = true;
     public int ColorIndex { get; set; } = 0;
 
+    /// <summary>Computed: FirstName + " " + LastName.</summary>
+    public string FullName => $"{FirstName} {LastName}".Trim();
+
+    /// <summary>Alias for Title (e.g. specialization role).</summary>
+    public string? Specialization { get => Title; set => Title = value; }
+
     // Navigation
     public Tenant Tenant { get; set; } = null!;
     public User? User { get; set; }

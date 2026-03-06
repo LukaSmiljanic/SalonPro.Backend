@@ -7,7 +7,15 @@ export const login = async (data: LoginRequest): Promise<AuthResponse> => {
 };
 
 export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
-  const response = await apiClient.post<AuthResponse>('/auth/register', data);
+  const body = {
+    tenantName: data.tenantName,
+    tenantSlug: data.tenantSlug ?? data.tenantName.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+    email: data.email,
+    password: data.password,
+    firstName: data.firstName,
+    lastName: data.lastName,
+  };
+  const response = await apiClient.post<AuthResponse>('/auth/register', body);
   return response.data;
 };
 

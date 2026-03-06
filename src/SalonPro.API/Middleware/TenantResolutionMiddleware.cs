@@ -40,7 +40,7 @@ public class TenantResolutionMiddleware
         Guid? tenantId = null;
 
         // 1. Try X-Tenant-Id header first
-        if (context.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantHeader)
+      if (context.Request.Headers.TryGetValue("X-Tenant-Id", out var tenantHeader)
             && Guid.TryParse(tenantHeader.FirstOrDefault(), out var headerTenantId))
         {
             tenantId = headerTenantId;

@@ -26,12 +26,14 @@ public class GetServicesByCategoryQueryHandler : IRequestHandler<GetServicesByCa
         return services.Select(s => new ServiceDto(
             s.Id,
             s.CategoryId,
-            s.Category.Name,
+            s.Category?.Name ?? "",
             s.Name,
             s.Description,
             s.DurationMinutes,
             s.Price,
-            s.IsActive
+            s.IsActive,
+            Domain.Enums.ServiceCategoryType.Hair,
+            ""
         )).ToList();
     }
 }

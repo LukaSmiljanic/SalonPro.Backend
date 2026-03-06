@@ -8,5 +8,7 @@ public record ServiceDto(
     string? Description,
     int DurationMinutes,
     decimal Price,
-    bool IsActive
+    bool IsActive,
+    SalonPro.Domain.Enums.ServiceCategoryType CategoryType,
+    string? CategoryColorHex
 );

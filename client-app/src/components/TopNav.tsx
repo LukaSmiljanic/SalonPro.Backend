@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, Scissors, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, Scissors, Menu, X, Package, UserPlus } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const navItems = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/calendar',  icon: Calendar,        label: 'Calendar'  },
-  { to: '/clients',   icon: Users,           label: 'Clients'   },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Kontrolna tabla' },
+  { to: '/calendar',  icon: Calendar,        label: 'Kalendar'  },
+  { to: '/clients',   icon: Users,           label: 'Klijenti'   },
+  { to: '/staff',     icon: UserPlus,        label: 'Zaposleni'  },
+  { to: '/services',  icon: Package,         label: 'Usluge'  },
 ];
 
 export const TopNav: React.FC = () => {
@@ -54,7 +56,7 @@ export const TopNav: React.FC = () => {
             onClick={logout}
             className="flex items-center gap-1.5 text-xs text-text-muted hover:text-error transition-interactive px-2 py-1 rounded-md hover:bg-error-bg"
           >
-            <LogOut size={13} /> Logout
+            <LogOut size={13} /> Odjava
           </button>
         </div>
 
@@ -87,7 +89,7 @@ export const TopNav: React.FC = () => {
             onClick={() => { logout(); setMobileOpen(false); }}
             className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-error hover:bg-error-bg mt-1"
           >
-            <LogOut size={14} /> Logout
+            <LogOut size={14} /> Odjava
           </button>
         </div>
       )}

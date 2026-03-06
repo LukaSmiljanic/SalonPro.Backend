@@ -26,19 +26,21 @@ public class GetServicesQueryHandler : IRequestHandler<GetServicesQuery, List<Se
         }
 
         var services = await query
-            .OrderBy(s => s.Category.Name)
+            .OrderBy(s => s.Category != null ? s.Category.Name : "")
             .ThenBy(s => s.Name)
             .ToListAsync(cancellationToken);
 
         return services.Select(s => new ServiceDto(
             s.Id,
             s.CategoryId,
-            s.Category.Name,
+            s.Category?.Name ?? "",
             s.Name,
             s.Description,
             s.DurationMinutes,
             s.Price,
-            s.IsActive
+            s.IsActive,
+            Domain.Enums.ServiceCategoryType.Massage,
+            ""
         )).ToList();
     }
 }

@@ -1,77 +1,84 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
-  format, parseISO, startOfWeek, addDays, addWeeks, subWeeks,
-  isSameDay, differenceInMinutes, setHours, setMinutes, isToday
+  format, parseISO, startOfWeek, addDays, addWeeks, subWeeks, isToday
 } from 'date-fns';
+import { srLatn } from 'date-fns/locale';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Filter } from 'lucide-react';
-import { getAppointments } from '../api/appointments';
+import { getAppointments, cancelAppointment, completeAppointment } from '../api/appointments';
 import { getStaff } from '../api/staff';
 import type { Appointment, StaffMember } from '../types';
+import { queryKeys } from '../lib/queryKeys';
 import { AppointmentBlock } from '../components/AppointmentBlock';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Modal } from '../components/Modal';
+import { CreateAppointmentModal } from '../components/CreateAppointmentModal';
 
-const HOUR_HEIGHT = 60; // px per hour
-const DAY_START = 8;    // 08:00
-const DAY_END   = 20;   // 20:00
+const HOUR_HEIGHT = 60;
+const DAY_START = 8;
+const DAY_END   = 22;
 const HOURS = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
 
 export const CalendarPage: React.FC = () => {
+  const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() =>
     startOfWeek(new Date(), { weekStartsOn: 1 })
   );
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [staff, setStaff] = useState<StaffMember[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart]
   );
 
-  const fetchAppointments = useCallback(async () => {
-    try {
-      setError(null);
-      const startDate = format(weekStart, 'yyyy-MM-dd');
-      const endDate   = format(addDays(weekStart, 6), 'yyyy-MM-dd');
-      const response  = await getAppointments({
-        date: `${startDate}/${endDate}`,
-        staffId: selectedStaffId !== 'all' ? selectedStaffId : undefined,
-      });
-      setAppointments(response.items);
-    } catch (err) {
-      console.error('Calendar fetch error:', err);
-      setError('Failed to load appointments.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [weekStart, selectedStaffId]);
+  const startDate = format(weekStart, 'yyyy-MM-dd');
+  const endDate = format(addDays(weekStart, 6), 'yyyy-MM-dd');
+  const dateRange = `${startDate}/${endDate}`;
 
-  useEffect(() => {
-    const fetchStaff = async () => {
-      try {
-        const members = await getStaff();
-        setStaff(members);
-      } catch {
-        // non-critical
-      }
-    };
-    fetchStaff();
-  }, []);
+  const { data: appointmentsData, isLoading, error } = useQuery({
+    queryKey: queryKeys.appointments.byDate(dateRange, selectedStaffId === 'all' ? undefined : selectedStaffId),
+    queryFn: () => getAppointments({
+      date: dateRange,
+      staffId: selectedStaffId !== 'all' ? selectedStaffId : undefined,
+    }),
+  });
 
-  useEffect(() => {
-    fetchAppointments();
-  }, [fetchAppointments]);
+  const { data: staff = [] } = useQuery({
+    queryKey: queryKeys.staff.list(),
+    queryFn: getStaff,
+  });
+
+  const appointments = appointmentsData?.items ?? [];
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => cancelAppointment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      setSelectedAppt(null);
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (id: string) => completeAppointment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      setSelectedAppt(null);
+    },
+  });
 
   const getAppointmentsForDay = useCallback((day: Date) => {
     return appointments.filter(appt => {
       try {
-        return isSameDay(parseISO(appt.startTime), day);
+        const apptStart = parseISO(appt.startTime);
+        return (
+          apptStart.getFullYear() === day.getFullYear() &&
+          apptStart.getMonth() === day.getMonth() &&
+          apptStart.getDate() === day.getDate()
+        );
       } catch {
         return false;
       }
@@ -81,13 +88,14 @@ export const CalendarPage: React.FC = () => {
   const getApptPosition = (appt: Appointment): { top: number; height: number } => {
     try {
       const start = parseISO(appt.startTime);
-      const end   = parseISO(appt.endTime);
-      const dayStart = setMinutes(setHours(start, DAY_START), 0);
-      const minutesFromStart = differenceInMinutes(start, dayStart);
-      const duration = differenceInMinutes(end, start);
+      const end = parseISO(appt.endTime);
+      const dayStart = new Date(start);
+      dayStart.setHours(DAY_START, 0, 0, 0);
+      const minutesFromStart = (start.getTime() - dayStart.getTime()) / (60 * 1000);
+      const durationMinutes = (end.getTime() - start.getTime()) / (60 * 1000);
       return {
-        top:    (minutesFromStart / 60) * HOUR_HEIGHT,
-        height: (duration / 60) * HOUR_HEIGHT,
+        top: Math.max(0, (minutesFromStart / 60) * HOUR_HEIGHT),
+        height: Math.max(20, (durationMinutes / 60) * HOUR_HEIGHT),
       };
     } catch {
       return { top: 0, height: HOUR_HEIGHT };
@@ -108,7 +116,7 @@ export const CalendarPage: React.FC = () => {
             <ChevronLeft size={16} />
           </button>
           <span className="text-sm font-medium text-text px-1 min-w-[160px] text-center">
-            {format(weekStart, 'MMM d')} – {format(addDays(weekStart, 6), 'MMM d, yyyy')}
+            {format(weekStart, 'MMM d', { locale: srLatn })} – {format(addDays(weekStart, 6), 'MMM d, yyyy', { locale: srLatn })}
           </span>
           <button
             onClick={() => setWeekStart(w => addWeeks(w, 1))}
@@ -123,7 +131,7 @@ export const CalendarPage: React.FC = () => {
           size="sm"
           onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
         >
-          Today
+          Danas
         </Button>
 
         {/* Staff filter */}
@@ -135,7 +143,7 @@ export const CalendarPage: React.FC = () => {
               onChange={e => setSelectedStaffId(e.target.value)}
               className="text-sm bg-surface border border-border rounded-md px-2 py-1 text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              <option value="all">All Staff</option>
+              <option value="all">Sve osoblje</option>
               {staff.map(s => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
@@ -144,11 +152,16 @@ export const CalendarPage: React.FC = () => {
         )}
 
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={fetchAppointments}>
-            Refresh
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<RefreshCw size={13} />}
+            onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })}
+          >
+            Osveži
           </Button>
-          <Button size="sm" icon={<Plus size={13} />}>
-            New
+          <Button size="sm" icon={<Plus size={13} />} onClick={() => setCreateModalOpen(true)}>
+            Novi
           </Button>
         </div>
       </div>
@@ -173,7 +186,7 @@ export const CalendarPage: React.FC = () => {
                   ${isToday(day) ? 'bg-primary-highlight' : ''}`}
               >
                 <p className="text-[11px] text-text-faint uppercase tracking-wide">
-                  {format(day, 'EEE')}
+                  {format(day, 'EEE', { locale: srLatn })}
                 </p>
                 <p className={`text-sm font-semibold ${ isToday(day) ? 'text-primary' : 'text-text' }`}>
                   {format(day, 'd')}
@@ -230,7 +243,7 @@ export const CalendarPage: React.FC = () => {
       <Modal
         isOpen={!!selectedAppt}
         onClose={() => setSelectedAppt(null)}
-        title="Appointment Details"
+        title="Detalji termina"
       >
         {selectedAppt && (
           <div className="space-y-3">
@@ -240,34 +253,62 @@ export const CalendarPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div>
-                <p className="text-text-faint text-xs">Service</p>
+                <p className="text-text-faint text-xs">Usluga</p>
                 <p className="text-text">{selectedAppt.serviceName}</p>
               </div>
               <div>
-                <p className="text-text-faint text-xs">Staff</p>
+                <p className="text-text-faint text-xs">Osoblje</p>
                 <p className="text-text">{selectedAppt.staffName}</p>
               </div>
               <div>
-                <p className="text-text-faint text-xs">Date & Time</p>
+                <p className="text-text-faint text-xs">Datum i vreme</p>
                 <p className="text-text">
-                  {format(parseISO(selectedAppt.startTime), 'EEE, MMM d · HH:mm')} –
-                  {format(parseISO(selectedAppt.endTime), ' HH:mm')}
+                  {format(parseISO(selectedAppt.startTime), 'EEE, MMM d · HH:mm', { locale: srLatn })} –
+                  {format(parseISO(selectedAppt.endTime), ' HH:mm', { locale: srLatn })}
                 </p>
               </div>
               <div>
-                <p className="text-text-faint text-xs">Price</p>
-                <p className="text-text font-medium">€{selectedAppt.price.toFixed(2)}</p>
+                <p className="text-text-faint text-xs">Cena</p>
+                <p className="text-text font-medium">{new Intl.NumberFormat('sr-Latn-RS', { style: 'currency', currency: 'RSD', minimumFractionDigits: 0 }).format(selectedAppt.price)}</p>
               </div>
             </div>
             {selectedAppt.notes && (
               <div>
-                <p className="text-text-faint text-xs">Notes</p>
+                <p className="text-text-faint text-xs">Napomene</p>
                 <p className="text-sm text-text">{selectedAppt.notes}</p>
               </div>
             )}
+            {/* Actions: Cancel (manual), Complete (manual) */}
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-divider">
+              {selectedAppt.status !== 'Completed' && selectedAppt.status !== 'Cancelled' && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => completeMutation.mutate(selectedAppt.id)}
+                    disabled={completeMutation.isPending}
+                  >
+                    {completeMutation.isPending ? '...' : 'Završi'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => cancelMutation.mutate(selectedAppt.id)}
+                    disabled={cancelMutation.isPending}
+                  >
+                    {cancelMutation.isPending ? '...' : 'Otkaži'}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </Modal>
+
+      <CreateAppointmentModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+      />
     </div>
   );
 };

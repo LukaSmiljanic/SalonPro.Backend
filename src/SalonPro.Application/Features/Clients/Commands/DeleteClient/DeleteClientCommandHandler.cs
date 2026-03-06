@@ -19,7 +19,7 @@ public class DeleteClientCommandHandler : IRequestHandler<DeleteClientCommand, U
         var client = await _unitOfWork.Clients.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Client), request.Id);
 
-        _unitOfWork.Clients.Delete(client);
+        _unitOfWork.Clients.Remove(client);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return Unit.Value;

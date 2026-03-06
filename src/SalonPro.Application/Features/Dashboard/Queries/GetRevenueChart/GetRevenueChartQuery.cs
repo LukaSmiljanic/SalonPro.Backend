@@ -9,4 +9,4 @@ public enum ChartPeriod
     Month = 1
 }
 
-public record GetRevenueChartQuery(ChartPeriod Period) : IRequest<RevenueChartDto>;
+public record GetRevenueChartQuery(ChartPeriod Period, int? Days = null) : IRequest<RevenueChartDto>;

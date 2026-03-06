@@ -9,14 +9,19 @@ namespace SalonPro.Application.Features.Dashboard.Queries.GetDashboardStats;
 public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQuery, DashboardStatsDto>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantService _currentTenantService;
 
-    public GetDashboardStatsQueryHandler(IUnitOfWork unitOfWork)
+    public GetDashboardStatsQueryHandler(IUnitOfWork unitOfWork, ICurrentTenantService currentTenantService)
     {
         _unitOfWork = unitOfWork;
+        _currentTenantService = currentTenantService;
     }
 
     public async Task<DashboardStatsDto> Handle(GetDashboardStatsQuery request, CancellationToken cancellationToken)
     {
+        var tenantId = _currentTenantService.TenantId
+            ?? throw new InvalidOperationException("Tenant ID is required for dashboard stats.");
+
         var targetDate = (request.Date ?? DateTime.UtcNow).Date;
         var targetDateEnd = targetDate.AddDays(1);
         var yesterday = targetDate.AddDays(-1);
@@ -24,8 +29,11 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
         var lastMonthStart = thisMonthStart.AddMonths(-1);
         var lastMonthEnd = thisMonthStart;
 
+        // All appointment queries explicitly scoped to current tenant (defence in depth)
+        var appointmentsBase = _unitOfWork.Appointments.Query().Where(a => a.TenantId == tenantId);
+
         // Today's revenue from completed appointments
-        var todayRevenue = await _unitOfWork.Appointments.Query()
+        var todayRevenue = await appointmentsBase
             .Where(a =>
                 a.StartTime >= targetDate &&
                 a.StartTime < targetDateEnd &&
@@ -33,7 +41,7 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             .SumAsync(a => (decimal?)a.TotalPrice, cancellationToken) ?? 0m;
 
         // Yesterday's revenue for comparison
-        var yesterdayRevenue = await _unitOfWork.Appointments.Query()
+        var yesterdayRevenue = await appointmentsBase
             .Where(a =>
                 a.StartTime >= yesterday &&
                 a.StartTime < targetDate &&
@@ -45,7 +53,7 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             : Math.Round((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100, 1);
 
         // Appointments today
-        var appointmentsToday = await _unitOfWork.Appointments.Query()
+        var appointmentsToday = await appointmentsBase
             .CountAsync(a =>
                 a.StartTime >= targetDate &&
                 a.StartTime < targetDateEnd &&
@@ -53,7 +61,7 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
                 cancellationToken);
 
         // Pending appointments today
-        var appointmentsPending = await _unitOfWork.Appointments.Query()
+        var appointmentsPending = await appointmentsBase
             .CountAsync(a =>
                 a.StartTime >= targetDate &&
                 a.StartTime < targetDateEnd &&
@@ -76,7 +84,7 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
         var totalActiveStaff = await _unitOfWork.StaffMembers.Query()
             .CountAsync(s => s.IsActive, cancellationToken);
 
-        var staffWithAppointmentsToday = await _unitOfWork.Appointments.Query()
+        var staffWithAppointmentsToday = await appointmentsBase
             .Where(a =>
                 a.StartTime >= targetDate &&
                 a.StartTime < targetDateEnd &&
@@ -90,7 +98,7 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             : Math.Round((decimal)staffWithAppointmentsToday / totalActiveStaff * 100, 1);
 
         // Yesterday occupancy for comparison
-        var staffWithAppointmentsYesterday = await _unitOfWork.Appointments.Query()
+        var staffWithAppointmentsYesterday = await appointmentsBase
             .Where(a =>
                 a.StartTime >= yesterday &&
                 a.StartTime < targetDate &&
@@ -107,6 +115,61 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             ? (occupancyRatePercent > 0 ? 100m : 0m)
             : Math.Round((occupancyRatePercent - yesterdayOccupancy) / yesterdayOccupancy * 100, 1);
 
+        // Week revenue (last 7 days, completed only)
+        var weekStart = targetDate.AddDays(-6);
+        var weekRevenue = await appointmentsBase
+            .Where(a =>
+                a.StartTime >= weekStart &&
+                a.StartTime < targetDateEnd &&
+                a.Status == AppointmentStatus.Completed)
+            .SumAsync(a => (decimal?)a.TotalPrice, cancellationToken) ?? 0m;
+
+        // Total clients (all time)
+        var totalClients = await _unitOfWork.Clients.Query()
+            .CountAsync(cancellationToken);
+
+        // Completion rate this month: completed / (total not cancelled) * 100
+        var monthEnd = thisMonthStart.AddMonths(1);
+        var completedThisMonth = await appointmentsBase
+            .CountAsync(a =>
+                a.StartTime >= thisMonthStart &&
+                a.StartTime < monthEnd &&
+                a.Status == AppointmentStatus.Completed,
+                cancellationToken);
+        var totalThisMonth = await appointmentsBase
+            .CountAsync(a =>
+                a.StartTime >= thisMonthStart &&
+                a.StartTime < monthEnd &&
+                a.Status != AppointmentStatus.Cancelled,
+                cancellationToken);
+        var completionRate = totalThisMonth == 0 ? 0m : Math.Round((decimal)completedThisMonth / totalThisMonth * 100, 1);
+
+        // Upcoming appointments (next 20 from now, not cancelled)
+        var now = request.Date ?? DateTime.UtcNow;
+        var upcoming = await appointmentsBase
+            .Where(a => a.StartTime >= now && a.Status != AppointmentStatus.Cancelled)
+            .OrderBy(a => a.StartTime)
+            .Take(20)
+            .Select(a => new
+            {
+                a.Id,
+                ClientName = a.Client!.FullName,
+                ServiceNames = a.AppointmentServices.Select(aps => aps.Service.Name),
+                StaffName = a.StaffMember!.FullName,
+                a.StartTime,
+                a.Status,
+            })
+            .ToListAsync(cancellationToken);
+
+        var upcomingDtos = upcoming.Select(a => new UpcomingAppointmentDto(
+            a.Id,
+            a.ClientName,
+            string.Join(", ", a.ServiceNames),
+            a.StaffName,
+            a.StartTime,
+            a.Status.ToString()
+        )).ToList();
+
         return new DashboardStatsDto(
             todayRevenue,
             revenueChangePercent,
@@ -115,7 +178,11 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             newClientsThisMonth,
             newClientsChangePercent,
             occupancyRatePercent,
-            occupancyChangePercent
+            occupancyChangePercent,
+            weekRevenue,
+            totalClients,
+            completionRate,
+            upcomingDtos
         );
     }
 }

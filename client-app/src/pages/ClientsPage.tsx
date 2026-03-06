@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2 } from 'lucide-react';
-import { getClients, createClient, updateClient, deleteClient } from '../api/clients';
+import { getClients, createClient, updateClient, deleteClient, getClient } from '../api/clients';
 import type { Client, CreateClientRequest } from '../types';
+import { queryKeys } from '../lib/queryKeys';
 import { ClientListItem } from '../components/ClientListItem';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -13,58 +15,72 @@ import { format, parseISO } from 'date-fns';
 const PAGE_SIZE = 20;
 
 export const ClientsPage: React.FC = () => {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [total, setTotal] = useState(0);
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Selected client panel
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
-  // New/Edit client modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [form, setForm] = useState<CreateClientRequest>({
     firstName: '', lastName: '', email: '', phone: '', notes: '',
   });
-  const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Debounce search
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const fetchClients = useCallback(async (searchTerm: string, currentPage: number) => {
-    setIsLoading(true);
-    try {
-      setError(null);
-      const response = await getClients({
-        search: searchTerm || undefined,
-        page: currentPage,
-        pageSize: PAGE_SIZE,
-      });
-      setClients(response.items);
-      setTotal(response.total);
-    } catch {
-      setError('Failed to load clients.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchClients(search, page);
-  }, [fetchClients, page]); // intentionally not including search - handled by debounce
-
-  const handleSearchChange = (value: string) => {
-    setSearch(value);
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search);
       setPage(1);
-      fetchClients(value, 1);
     }, 350);
-  };
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [search]);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: queryKeys.clients.list({
+      search: debouncedSearch || undefined,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+    queryFn: () => getClients({
+      search: debouncedSearch || undefined,
+      page,
+      pageSize: PAGE_SIZE,
+    }),
+  });
+
+  const clients = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+
+  const createMutation = useMutation({
+    mutationFn: createClient,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
+      setModalOpen(false);
+    },
+    onError: () => setFormError('Nije moguće sačuvati klijenta. Pokušajte ponovo.'),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateClientRequest> }) => updateClient(id, data),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
+      if (selectedClient?.id === updated.id) setSelectedClient(updated);
+      setModalOpen(false);
+    },
+    onError: () => setFormError('Nije moguće sačuvati klijenta. Pokušajte ponovo.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteClient,
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
+      if (selectedClient?.id === id) setSelectedClient(null);
+    },
+  });
 
   const openNewModal = () => {
     setEditingClient(null);
@@ -86,44 +102,26 @@ export const ClientsPage: React.FC = () => {
     setModalOpen(true);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!form.firstName.trim() || !form.lastName.trim()) {
-      setFormError('First and last name are required.');
+      setFormError('Ime i prezime su obavezni.');
       return;
     }
-    setFormLoading(true);
     setFormError(null);
-    try {
-      if (editingClient) {
-        const updated = await updateClient(editingClient.id, form);
-        setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
-        if (selectedClient?.id === updated.id) setSelectedClient(updated);
-      } else {
-        const created = await createClient(form);
-        setClients(prev => [created, ...prev]);
-        setTotal(t => t + 1);
-      }
-      setModalOpen(false);
-    } catch {
-      setFormError('Failed to save client. Please try again.');
-    } finally {
-      setFormLoading(false);
+    if (editingClient) {
+      updateMutation.mutate({ id: editingClient.id, data: form });
+    } else {
+      createMutation.mutate(form);
     }
   };
 
-  const handleDelete = async (client: Client) => {
-    if (!window.confirm(`Delete ${client.firstName} ${client.lastName}? This cannot be undone.`)) return;
-    try {
-      await deleteClient(client.id);
-      setClients(prev => prev.filter(c => c.id !== client.id));
-      setTotal(t => t - 1);
-      if (selectedClient?.id === client.id) setSelectedClient(null);
-    } catch {
-      alert('Failed to delete client.');
-    }
+  const handleDelete = (client: Client) => {
+    if (!window.confirm(`Obrisati ${client.firstName} ${client.lastName}? Ova akcija se ne može poništiti.`)) return;
+    deleteMutation.mutate(client.id);
   };
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const formLoading = createMutation.isPending || updateMutation.isPending;
+  const listError = error ? 'Nije moguće učitati klijente.' : null;
 
   return (
     <div className="container-main py-6">
@@ -135,27 +133,27 @@ export const ClientsPage: React.FC = () => {
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-xl font-semibold text-display text-text">Clients</h1>
-              <p className="text-xs text-text-faint mt-0.5">{total} total</p>
+              <h1 className="text-xl font-semibold text-display text-text">Klijenti</h1>
+              <p className="text-xs text-text-faint mt-0.5">{total} ukupno</p>
             </div>
             <Button size="sm" icon={<Plus size={13} />} onClick={openNewModal}>
-              Add Client
+              Dodaj klijenta
             </Button>
           </div>
 
           {/* Search */}
           <div className="mb-4">
             <Input
-              placeholder="Search by name, email or phone…"
+              placeholder="Pretraga po imenu, emailu ili telefonu…"
               value={search}
-              onChange={e => handleSearchChange(e.target.value)}
+              onChange={e => setSearch(e.target.value)}
               leftIcon={<Search size={14} />}
               rightIcon={
                 search ? (
                   <button
                     type="button"
                     className="pointer-events-auto text-text-faint hover:text-text-muted"
-                    onClick={() => handleSearchChange('')}
+                    onClick={() => setSearch('')}
                   >
                     <X size={13} />
                   </button>
@@ -165,8 +163,8 @@ export const ClientsPage: React.FC = () => {
           </div>
 
           {/* Error */}
-          {error && (
-            <div className="p-3 bg-error-bg border border-error/20 rounded-lg text-sm text-error mb-4">{error}</div>
+          {listError && (
+            <div className="p-3 bg-error-bg border border-error/20 rounded-lg text-sm text-error mb-4">{listError}</div>
           )}
 
           {/* List */}
@@ -176,9 +174,9 @@ export const ClientsPage: React.FC = () => {
             </div>
           ) : clients.length === 0 ? (
             <EmptyState
-              title={search ? 'No clients found' : 'No clients yet'}
-              description={search ? 'Try a different search term.' : 'Add your first client to get started.'}
-              action={!search ? <Button size="sm" icon={<Plus size={12} />} onClick={openNewModal}>Add Client</Button> : undefined}
+              title={search ? 'Nema pronađenih klijenata' : 'Još nema klijenata'}
+              description={search ? 'Pokušajte drugi pojam za pretragu.' : 'Dodajte prvog klijenta da biste počeli.'}
+              action={!search ? <Button size="sm" icon={<Plus size={12} />} onClick={openNewModal}>Dodaj klijenta</Button> : undefined}
             />
           ) : (
             <div className="space-y-1">
@@ -187,7 +185,14 @@ export const ClientsPage: React.FC = () => {
                   key={client.id}
                   client={client}
                   selected={selectedClient?.id === client.id}
-                  onClick={setSelectedClient}
+                  onClick={async (c) => {
+                    try {
+                      const full = await getClient(c.id);
+                      setSelectedClient(full);
+                    } catch {
+                      setSelectedClient(c);
+                    }
+                  }}
                 />
               ))}
             </div>
@@ -202,7 +207,7 @@ export const ClientsPage: React.FC = () => {
                 disabled={page === 1}
                 onClick={() => setPage(p => p - 1)}
               >
-                Previous
+                Prethodna
               </Button>
               <span className="text-sm text-text-muted">{page} / {totalPages}</span>
               <Button
@@ -211,7 +216,7 @@ export const ClientsPage: React.FC = () => {
                 disabled={page === totalPages}
                 onClick={() => setPage(p => p + 1)}
               >
-                Next
+                Sledeća
               </Button>
             </div>
           )}
@@ -224,14 +229,18 @@ export const ClientsPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary-highlight flex items-center justify-center">
                   <span className="text-sm font-semibold text-primary">
-                    {selectedClient.firstName[0]}{selectedClient.lastName[0]}
+                    {((selectedClient.firstName?.[0] ?? '') + (selectedClient.lastName?.[0] ?? '')).toUpperCase() || '?'}
                   </span>
                 </div>
                 <div>
                   <p className="font-semibold text-text">
                     {selectedClient.firstName} {selectedClient.lastName}
                   </p>
-                  <p className="text-xs text-text-faint">Client since {format(parseISO(selectedClient.createdAt), 'MMM yyyy')}</p>
+                  {selectedClient.createdAt ? (
+                    <p className="text-xs text-text-faint">Klijent od {format(parseISO(selectedClient.createdAt), 'MMM yyyy')}</p>
+                  ) : (
+                    <p className="text-xs text-text-faint">—</p>
+                  )}
                 </div>
               </div>
               <button
@@ -260,7 +269,7 @@ export const ClientsPage: React.FC = () => {
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar size={13} className="text-text-faint shrink-0" />
                   <span className="text-text">
-                    Last visit: {format(parseISO(selectedClient.lastVisit), 'MMM d, yyyy')}
+                    Poslednja poseta: {format(parseISO(selectedClient.lastVisit), 'd. MMM yyyy.')}
                   </span>
                 </div>
               )}
@@ -270,18 +279,18 @@ export const ClientsPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-3 mb-4">
               <div className="bg-surface-2 rounded-lg p-3 text-center">
                 <p className="text-lg font-semibold text-text">{selectedClient.totalVisits}</p>
-                <p className="text-xs text-text-faint">Visits</p>
+                <p className="text-xs text-text-faint">Posete</p>
               </div>
               <div className="bg-surface-2 rounded-lg p-3 text-center">
-                <p className="text-lg font-semibold text-text">€{selectedClient.totalSpent.toFixed(0)}</p>
-                <p className="text-xs text-text-faint">Spent</p>
+                <p className="text-lg font-semibold text-text">{new Intl.NumberFormat('sr-Latn-RS', { style: 'currency', currency: 'RSD', minimumFractionDigits: 0 }).format(selectedClient.totalSpent)}</p>
+                <p className="text-xs text-text-faint">Potrošeno</p>
               </div>
             </div>
 
             {/* Notes */}
             {selectedClient.notes && (
               <div className="mb-4">
-                <p className="text-xs text-text-faint mb-1">Notes</p>
+                <p className="text-xs text-text-faint mb-1">Napomene</p>
                 <p className="text-sm text-text">{selectedClient.notes}</p>
               </div>
             )}
@@ -295,7 +304,7 @@ export const ClientsPage: React.FC = () => {
                 icon={<UserCircle2 size={13} />}
                 onClick={() => openEditModal(selectedClient)}
               >
-                Edit
+                Izmeni
               </Button>
               <Button
                 variant="danger"
@@ -303,7 +312,7 @@ export const ClientsPage: React.FC = () => {
                 icon={<Trash2 size={13} />}
                 onClick={() => handleDelete(selectedClient)}
               >
-                Delete
+                Obriši
               </Button>
             </div>
           </div>
@@ -314,12 +323,12 @@ export const ClientsPage: React.FC = () => {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingClient ? 'Edit Client' : 'New Client'}
+        title={editingClient ? 'Izmena klijenta' : 'Novi klijent'}
         footer={
           <>
-            <Button variant="secondary" onClick={() => setModalOpen(false)}>Cancel</Button>
+            <Button variant="secondary" onClick={() => setModalOpen(false)}>Odustani</Button>
             <Button loading={formLoading} icon={<Save size={13} />} onClick={handleSubmit}>
-              {editingClient ? 'Save Changes' : 'Add Client'}
+              {editingClient ? 'Sačuvaj izmene' : 'Dodaj klijenta'}
             </Button>
           </>
         }
@@ -330,16 +339,16 @@ export const ClientsPage: React.FC = () => {
           )}
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label="First Name"
+              label="Ime"
               value={form.firstName}
               onChange={e => setForm(f => ({ ...f, firstName: e.target.value }))}
-              placeholder="Jane"
+              placeholder="Jelena"
             />
             <Input
-              label="Last Name"
+              label="Prezime"
               value={form.lastName}
               onChange={e => setForm(f => ({ ...f, lastName: e.target.value }))}
-              placeholder="Smith"
+              placeholder="Petrović"
             />
           </div>
           <Input
@@ -347,21 +356,21 @@ export const ClientsPage: React.FC = () => {
             type="email"
             value={form.email ?? ''}
             onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-            placeholder="jane@example.com"
+            placeholder="jela@primer.com"
           />
           <Input
-            label="Phone"
+            label="Telefon"
             type="tel"
             value={form.phone ?? ''}
             onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
-            placeholder="+1 555 000 0000"
+            placeholder="+381 6x xxx xxxx"
           />
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-text">Notes</label>
+            <label className="text-sm font-medium text-text">Napomene</label>
             <textarea
               value={form.notes ?? ''}
               onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
-              placeholder="Any additional notes about this client…"
+              placeholder="Dodatne napomene o klijentu…"
               rows={3}
               className="w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-text placeholder:text-text-faint resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
             />

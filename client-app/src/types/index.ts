@@ -3,14 +3,16 @@
 export interface LoginRequest {
   email: string;
   password: string;
-  tenantId: string;
+  tenantId?: string; // optional; backend resolves tenant from user account
 }
 
 export interface RegisterRequest {
   email: string;
   password: string;
   tenantName: string;
-  ownerName: string;
+  tenantSlug?: string; // optional; derived from tenantName if not provided
+  firstName: string;
+  lastName: string;
 }
 
 export interface AuthUser {
@@ -144,14 +146,58 @@ export interface StaffMember {
   isActive: boolean;
 }
 
+export interface CreateStaffRequest {
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  title?: string;
+  specialization?: string;
+  colorIndex?: number;
+}
+
 // ─── Services ────────────────────────────────────────────────────────────────
+
+export type ServiceCategoryType =
+  | 'Hair'
+  | 'Nails'
+  | 'Skin'
+  | 'Massage'
+  | 'Makeup'
+  | 'Other';
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  description?: string;
+  colorHex?: string;
+  type: ServiceCategoryType;
+  isActive: boolean;
+  serviceCount: number;
+}
+
+export interface CreateServiceCategoryRequest {
+  name: string;
+  description?: string;
+  colorHex?: string;
+  type?: ServiceCategoryType;
+}
 
 export interface Service {
   id: string;
   name: string;
   category: string;
+  categoryId?: string;
   duration: number; // minutes
   price: number;
   description?: string;
   isActive: boolean;
+}
+
+export interface CreateServiceRequest {
+  categoryId: string;
+  name: string;
+  description?: string;
+  durationMinutes: number;
+  price: number;
 }

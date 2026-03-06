@@ -29,6 +29,7 @@ public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, G
             LastName = request.LastName,
             Email = request.Email,
             Phone = request.Phone,
+            DateOfBirth = request.DateOfBirth,
             Notes = request.Notes,
             IsVip = request.IsVip,
             Tags = request.Tags

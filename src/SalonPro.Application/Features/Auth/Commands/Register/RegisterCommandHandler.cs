@@ -1,4 +1,3 @@
-using AutoMapper;
 using MediatR;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Application.Common.Interfaces;
@@ -14,20 +13,17 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordService _passwordService;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly IMapper _mapper;
     private readonly IDateTimeService _dateTimeService;
 
     public RegisterCommandHandler(
         IUnitOfWork unitOfWork,
         IPasswordService passwordService,
         IJwtTokenService jwtTokenService,
-        IMapper mapper,
         IDateTimeService dateTimeService)
     {
         _unitOfWork = unitOfWork;
         _passwordService = passwordService;
         _jwtTokenService = jwtTokenService;
-        _mapper = mapper;
         _dateTimeService = dateTimeService;
     }
 
@@ -82,10 +78,21 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var response = _mapper.Map<AuthResponseDto>(user);
-        response.AccessToken = accessToken;
-        response.RefreshToken = refreshToken;
-        response.ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60);
+        var response = new AuthResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60),
+            User = new AuthUserDto
+            {
+                Id = user.Id.ToString(),
+                Email = user.Email,
+                Name = $"{user.FirstName} {user.LastName}".Trim(),
+                Role = user.Role.ToString(),
+                TenantId = tenant.Id.ToString(),
+                TenantName = tenant.Name
+            }
+        };
 
         return response;
     }

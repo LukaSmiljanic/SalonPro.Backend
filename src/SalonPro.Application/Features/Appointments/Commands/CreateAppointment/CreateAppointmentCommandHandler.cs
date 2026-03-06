@@ -36,7 +36,7 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
             .Where(s => request.ServiceIds.Contains(s.Id) && s.IsActive)
             .ToListAsync(cancellationToken);
 
-        if (services.Count != request.ServiceIds.Count)
+        if (services.Count != request.ServiceIds.Count())
         {
             throw new NotFoundException("One or more services were not found or are inactive.");
         }
@@ -54,6 +54,7 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
             EndTime = endTime,
             Status = AppointmentStatus.Scheduled,
             TotalPrice = totalPrice,
+            TotalDurationMinutes = totalDuration,
             Notes = request.Notes
         };
 

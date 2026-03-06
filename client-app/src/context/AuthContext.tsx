@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { AuthUser } from '../types';
-import { login as apiLogin } from '../api/auth';
-import type { LoginRequest } from '../types';
+import { login as apiLogin, register as apiRegister } from '../api/auth';
+import type { LoginRequest, RegisterRequest } from '../types';
 import {
   getStoredToken,
   getStoredTenantId,
@@ -17,6 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (data: LoginRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
 }
 
@@ -61,6 +62,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(response.user);
   }, []);
 
+  const register = useCallback(async (data: RegisterRequest) => {
+    const response = await apiRegister(data);
+    setStoredToken(response.accessToken);
+    setStoredRefreshToken(response.refreshToken);
+    setStoredTenantId(response.user.tenantId);
+    setUser(response.user);
+  }, []);
+
   const logout = useCallback(() => {
     clearStoredAuth();
     setUser(null);
@@ -71,6 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     isAuthenticated: user !== null,
     login,
+    register,
     logout,
   };
 

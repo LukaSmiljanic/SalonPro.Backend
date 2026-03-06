@@ -16,5 +16,5 @@ public record StaffScheduleDto(
     string? Specialization,
     string? AvatarUrl,
     List<WorkingHoursDto> WorkingHours,
-    List<AppointmentDto> Appointments
+    List<AppointmentListDto> Appointments
 );

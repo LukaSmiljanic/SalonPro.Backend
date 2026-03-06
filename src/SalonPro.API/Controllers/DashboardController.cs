@@ -20,9 +20,9 @@ public class DashboardController : ApiControllerBase
 
     [HttpGet("revenue-chart")]
     [ProducesResponseType(typeof(RevenueChartDto), 200)]
-    public async Task<IActionResult> GetRevenueChart([FromQuery] ChartPeriod period = ChartPeriod.Week)
+    public async Task<IActionResult> GetRevenueChart([FromQuery] ChartPeriod period = ChartPeriod.Week, [FromQuery] int? days = null)
     {
-        var result = await Mediator.Send(new GetRevenueChartQuery(period));
+        var result = await Mediator.Send(new GetRevenueChartQuery(period, days));
         return Ok(result);
     }
 

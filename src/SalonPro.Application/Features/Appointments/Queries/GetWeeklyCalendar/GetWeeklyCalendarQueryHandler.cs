@@ -60,6 +60,6 @@ public class GetWeeklyCalendarQueryHandler : IRequestHandler<GetWeeklyCalendarQu
             })
             .ToList();
 
-        return new WeeklyCalendarDto(staffSchedules);
+        return new WeeklyCalendarDto(weekStart, weekEnd, staffSchedules);
     }
 }

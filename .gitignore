@@ -273,3 +273,4 @@ $RECYCLE.BIN/
 # ASP.NET Core
 appsettings.*.json
 !appsettings.Development.json
+/client-app/node_modules

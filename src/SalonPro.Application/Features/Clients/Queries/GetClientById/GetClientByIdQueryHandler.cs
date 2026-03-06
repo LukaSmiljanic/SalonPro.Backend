@@ -57,7 +57,7 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             client.LastName,
             client.FullName,
             client.Email,
-            client.Phone,
+            client.Phone ?? string.Empty,
             client.Notes,
             client.IsVip,
             client.Tags,

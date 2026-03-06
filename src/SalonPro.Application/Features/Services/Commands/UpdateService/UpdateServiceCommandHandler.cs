@@ -19,16 +19,16 @@ public class UpdateServiceCommandHandler : IRequestHandler<UpdateServiceCommand,
         var service = await _unitOfWork.Services.GetByIdAsync(request.Id, cancellationToken)
             ?? throw new NotFoundException(nameof(Service), request.Id);
 
-        var category = await _unitOfWork.ServiceCategories.GetByIdAsync(request.ServiceCategoryId, cancellationToken)
-            ?? throw new NotFoundException(nameof(ServiceCategory), request.ServiceCategoryId);
+        var category = await _unitOfWork.ServiceCategories.GetByIdAsync(request.CategoryId, cancellationToken)
+            ?? throw new NotFoundException(nameof(ServiceCategory), request.CategoryId);
 
         service.Name = request.Name;
         service.Description = request.Description;
         service.Price = request.Price;
         service.DurationMinutes = request.DurationMinutes;
-        service.ServiceCategoryId = request.ServiceCategoryId;
+        service.CategoryId = request.CategoryId;
         service.IsActive = request.IsActive;
-        service.LastModifiedAt = DateTime.UtcNow;
+        service.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Services.Update(service);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

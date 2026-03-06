@@ -12,5 +12,10 @@ public class ClientNoteConfiguration : IEntityTypeConfiguration<ClientNote>
         builder.Property(cn => cn.Content).IsRequired().HasMaxLength(5000);
         builder.Property(cn => cn.CreatedBy).HasMaxLength(256);
         builder.Property(cn => cn.CreatedAt).IsRequired();
+
+        builder.HasOne(cn => cn.Tenant)
+            .WithMany()
+            .HasForeignKey(cn => cn.TenantId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SalonPro.Application.Features.Services.Commands.CreateService;
+using SalonPro.Application.Features.Services.Commands.DeleteService;
 using SalonPro.Application.Features.Services.Commands.UpdateService;
 using SalonPro.Application.Features.Services.DTOs;
 using SalonPro.Application.Features.Services.Queries.GetServices;
@@ -48,6 +49,15 @@ public class ServicesController : ApiControllerBase
             return BadRequest("ID mismatch.");
 
         await Mediator.Send(command);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> DeleteService([FromRoute] Guid id)
+    {
+        await Mediator.Send(new DeleteServiceCommand(id));
         return NoContent();
     }
 }

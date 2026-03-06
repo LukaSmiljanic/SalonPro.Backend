@@ -8,5 +8,9 @@ public record DashboardStatsDto(
     int NewClientsThisMonth,
     decimal NewClientsChangePercent,
     decimal OccupancyRatePercent,
-    decimal OccupancyChangePercent
+    decimal OccupancyChangePercent,
+    decimal WeekRevenue,
+    int TotalClients,
+    decimal CompletionRate,
+    List<UpcomingAppointmentDto> UpcomingAppointments
 );

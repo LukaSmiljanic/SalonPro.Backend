@@ -27,7 +27,7 @@ public class CancelAppointmentCommandHandler : IRequestHandler<CancelAppointment
 
         appointment.Status = AppointmentStatus.Cancelled;
         appointment.CancellationReason = request.CancellationReason;
-        appointment.LastModifiedAt = DateTime.UtcNow;
+        appointment.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Appointments.Update(appointment);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

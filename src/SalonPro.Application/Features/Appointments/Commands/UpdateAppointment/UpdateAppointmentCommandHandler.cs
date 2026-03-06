@@ -40,7 +40,7 @@ public class UpdateAppointmentCommandHandler : IRequestHandler<UpdateAppointment
 
         foreach (var existingService in appointment.AppointmentServices.ToList())
         {
-            _unitOfWork.AppointmentServices.Delete(existingService);
+            _unitOfWork.AppointmentServices.Remove(existingService);
         }
 
         var totalDuration = services.Sum(s => s.DurationMinutes);
@@ -53,7 +53,7 @@ public class UpdateAppointmentCommandHandler : IRequestHandler<UpdateAppointment
         appointment.TotalPrice = totalPrice;
         appointment.Notes = request.Notes;
         appointment.Status = request.Status;
-        appointment.LastModifiedAt = DateTime.UtcNow;
+        appointment.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Appointments.Update(appointment);
 

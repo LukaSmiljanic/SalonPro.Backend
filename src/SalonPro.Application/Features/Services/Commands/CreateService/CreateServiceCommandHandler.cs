@@ -23,17 +23,17 @@ public class CreateServiceCommandHandler : IRequestHandler<CreateServiceCommand,
         var tenantId = _currentTenantService.TenantId
             ?? throw new InvalidOperationException("Tenant context is not set.");
 
-        var category = await _unitOfWork.ServiceCategories.GetByIdAsync(request.ServiceCategoryId, cancellationToken)
-            ?? throw new NotFoundException(nameof(ServiceCategory), request.ServiceCategoryId);
+        var category = await _unitOfWork.ServiceCategories.GetByIdAsync(request.CategoryId, cancellationToken)
+            ?? throw new NotFoundException(nameof(ServiceCategory), request.CategoryId);
 
         var service = new Service
         {
             TenantId = tenantId,
+            CategoryId = request.CategoryId,
             Name = request.Name,
             Description = request.Description,
             Price = request.Price,
             DurationMinutes = request.DurationMinutes,
-            ServiceCategoryId = request.ServiceCategoryId,
             IsActive = true
         };
 

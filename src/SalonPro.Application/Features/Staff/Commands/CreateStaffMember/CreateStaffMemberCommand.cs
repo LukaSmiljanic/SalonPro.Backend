@@ -8,5 +8,6 @@ public record CreateStaffMemberCommand(
     string? Email,
     string? Phone,
     string? Title,
+    string? Specialization,
     int ColorIndex
 ) : IRequest<Guid>;

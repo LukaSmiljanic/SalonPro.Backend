@@ -1,70 +1,63 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import { useQuery } from '@tanstack/react-query';
 import { format, parseISO, isToday, isTomorrow } from 'date-fns';
+import { srLatn } from 'date-fns/locale';
 import {
   TrendingUp, Users, Calendar, CheckCircle2, Plus, RefreshCw
 } from 'lucide-react';
 import { getDashboardStats, getRevenueChart } from '../api/dashboard';
 import type { DashboardStats, RevenueChartPoint } from '../types';
+import { queryKeys } from '../lib/queryKeys';
 import { KpiCard } from '../components/KpiCard';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { CreateAppointmentModal } from '../components/CreateAppointmentModal';
 
-const REFRESH_INTERVAL = 60_000; // 1 min
+const REFRESH_INTERVAL_MS = 60_000;
 
 export const DashboardPage: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [chartData, setChartData] = useState<RevenueChartPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [createAppointmentModalOpen, setCreateAppointmentModalOpen] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setError(null);
-      const [statsData, chartPoints] = await Promise.all([
-        getDashboardStats(),
-        getRevenueChart(30),
-      ]);
-      setStats(statsData);
-      setChartData(chartPoints);
-      setLastUpdated(new Date());
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-      setError('Failed to load dashboard data. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const { data: stats, isLoading: statsLoading, error: statsError, refetch: refetchStats, dataUpdatedAt } = useQuery({
+    queryKey: queryKeys.dashboard.stats(),
+    queryFn: getDashboardStats,
+    refetchInterval: REFRESH_INTERVAL_MS,
+  });
 
-  useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [fetchData]);
+  const { data: chartData = [], isLoading: chartLoading } = useQuery({
+    queryKey: queryKeys.dashboard.revenueChart(30),
+    queryFn: () => getRevenueChart(30),
+    refetchInterval: REFRESH_INTERVAL_MS,
+  });
+
+  const isLoading = statsLoading || chartLoading;
+  const error = statsError ? 'Nije moguće učitati podatke. Pokušajte ponovo.' : null;
+  const lastUpdated = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   const formatDateLabel = (dateStr: string) => {
     const date = parseISO(dateStr);
-    if (isToday(date)) return 'Today';
-    if (isTomorrow(date)) return 'Tomorrow';
-    return format(date, 'EEE, MMM d');
+    if (isToday(date)) return 'Danas';
+    if (isTomorrow(date)) return 'Sutra';
+    return format(date, 'EEE, MMM d', { locale: srLatn });
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('sr-Latn-RS', {
       style: 'currency',
-      currency: 'EUR',
+      currency: 'RSD',
       minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
     }).format(value);
   };
 
   const formatChartDate = (dateStr: string) => {
     try {
-      return format(parseISO(dateStr), 'MMM d');
+      return format(parseISO(dateStr), 'MMM d', { locale: srLatn });
     } catch {
       return dateStr;
     }
@@ -84,19 +77,19 @@ export const DashboardPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-display text-text">Dashboard</h1>
+          <h1 className="text-xl font-semibold text-display text-text">Kontrolna tabla</h1>
           {lastUpdated && (
             <p className="text-xs text-text-faint mt-0.5">
-              Updated {format(lastUpdated, 'HH:mm')}
+              Ažurirano {format(lastUpdated, 'HH:mm')}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={fetchData}>
-            Refresh
+          <Button variant="secondary" size="sm" icon={<RefreshCw size={13} />} onClick={() => refetchStats()}>
+            Osveži
           </Button>
-          <Button size="sm" icon={<Plus size={13} />}>
-            New Appointment
+          <Button size="sm" icon={<Plus size={13} />} onClick={() => setCreateAppointmentModalOpen(true)}>
+            Novi termin
           </Button>
         </div>
       </div>
@@ -112,28 +105,28 @@ export const DashboardPage: React.FC = () => {
       {stats && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KpiCard
-            label="Today's Appointments"
+            label="Termini danas"
             value={stats.todayAppointments}
             icon={<Calendar size={16} />}
-            subtext="Scheduled today"
+            subtext="Zakazano danas"
           />
           <KpiCard
-            label="Week Revenue"
+            label="Prihod nedelja"
             value={formatCurrency(stats.weekRevenue)}
             icon={<TrendingUp size={16} />}
-            subtext="Last 7 days"
+            subtext="Poslednjih 7 dana"
           />
           <KpiCard
-            label="Active Clients"
+            label="Aktivni klijenti"
             value={stats.activeClients}
             icon={<Users size={16} />}
-            subtext="Total registered"
+            subtext="Ukupno registrovanih"
           />
           <KpiCard
-            label="Completion Rate"
-            value={`${stats.completionRate.toFixed(1)}%`}
+            label="Stopa završenosti"
+            value={`${stats?.completionRate?.toFixed(1)}%`}
             icon={<CheckCircle2 size={16} />}
-            subtext="This month"
+            subtext="Ovog meseca"
           />
         </div>
       )}
@@ -143,7 +136,7 @@ export const DashboardPage: React.FC = () => {
 
         {/* Revenue chart */}
         <div className="lg:col-span-2 card card-padded">
-          <h2 className="text-sm font-semibold text-text mb-4">Revenue (Last 30 Days)</h2>
+          <h2 className="text-sm font-semibold text-text mb-4">Prihod (poslednjih 30 dana)</h2>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
@@ -163,13 +156,13 @@ export const DashboardPage: React.FC = () => {
                   interval="preserveStartEnd"
                 />
                 <YAxis
-                  tickFormatter={v => `€${v}`}
+                  tickFormatter={v => `${formatCurrency(v)}`}
                   tick={{ fontSize: 11, fill: 'var(--color-text-faint)' }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <Tooltip
-                  formatter={(v: number) => [formatCurrency(v), 'Revenue']}
+                  formatter={(v: number) => [formatCurrency(v), 'Prihod']}
                   labelFormatter={formatChartDate}
                   contentStyle={{
                     background: 'var(--color-surface)',
@@ -191,8 +184,8 @@ export const DashboardPage: React.FC = () => {
             </ResponsiveContainer>
           ) : (
             <EmptyState
-              title="No revenue data"
-              description="Revenue will appear here once you have completed appointments."
+              title="Nema podataka o prihodu"
+              description="Prihod će se pojaviti kada budete imali završene termine."
             />
           )}
         </div>
@@ -200,13 +193,13 @@ export const DashboardPage: React.FC = () => {
         {/* Upcoming appointments */}
         <div className="card card-padded">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-text">Upcoming</h2>
+            <h2 className="text-sm font-semibold text-text">Predstojeći</h2>
             <span className="text-xs text-text-faint">
-              {stats?.upcomingAppointments.length ?? 0} appointments
+              {stats?.upcomingAppointments?.length ?? 0} termina
             </span>
           </div>
 
-          {stats?.upcomingAppointments.length ? (
+          {stats?.upcomingAppointments?.length ? (
             <div className="space-y-3">
               {stats.upcomingAppointments.map(appt => (
                 <div key={appt.id} className="flex flex-col gap-1 p-3 bg-surface-2 rounded-lg">
@@ -226,15 +219,21 @@ export const DashboardPage: React.FC = () => {
             </div>
           ) : (
             <EmptyState
-              title="No upcoming appointments"
-              description="Schedule a new appointment to get started."
+              title="Nema predstojećih termina"
+              description="Zakažite novi termin da biste počeli."
               action={
-                <Button size="sm" icon={<Plus size={12} />}>New Appointment</Button>
+                <Button size="sm" icon={<Plus size={12} />} onClick={() => setCreateAppointmentModalOpen(true)}>
+                  Novi termin
+                </Button>
               }
             />
           )}
         </div>
       </div>
+      <CreateAppointmentModal
+        isOpen={createAppointmentModalOpen}
+        onClose={() => setCreateAppointmentModalOpen(false)}
+      />
     </div>
   );
 };

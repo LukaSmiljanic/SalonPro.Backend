@@ -26,7 +26,7 @@ public class CompleteAppointmentCommandHandler : IRequestHandler<CompleteAppoint
         }
 
         appointment.Status = AppointmentStatus.Completed;
-        appointment.LastModifiedAt = DateTime.UtcNow;
+        appointment.UpdatedAt = DateTime.UtcNow;
 
         _unitOfWork.Appointments.Update(appointment);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

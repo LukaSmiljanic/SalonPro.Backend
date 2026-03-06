@@ -1,5 +1,5 @@
-using AutoMapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Application.Common.Interfaces;
 using SalonPro.Application.Features.Auth.DTOs;
@@ -11,18 +11,15 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly IMapper _mapper;
     private readonly IDateTimeService _dateTimeService;
 
     public RefreshTokenCommandHandler(
         IUnitOfWork unitOfWork,
         IJwtTokenService jwtTokenService,
-        IMapper mapper,
         IDateTimeService dateTimeService)
     {
         _unitOfWork = unitOfWork;
         _jwtTokenService = jwtTokenService;
-        _mapper = mapper;
         _dateTimeService = dateTimeService;
     }
 
@@ -34,7 +31,9 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         if (userId == null)
             throw new UnauthorizedException("Invalid refresh token.");
 
-        var user = await _unitOfWork.Users.FirstOrDefaultAsync(
+        var user = await _unitOfWork.Users.Query()
+            .Include(u => u.Tenant)
+            .FirstOrDefaultAsync(
             u => u.Id == userId && u.RefreshToken == request.RefreshToken && u.IsActive, cancellationToken);
 
         if (user == null || user.RefreshTokenExpiry <= _dateTimeService.UtcNow)
@@ -48,10 +47,21 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var response = _mapper.Map<AuthResponseDto>(user);
-        response.AccessToken = accessToken;
-        response.RefreshToken = newRefreshToken;
-        response.ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60);
+        var response = new AuthResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = newRefreshToken,
+            ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60),
+            User = new AuthUserDto
+            {
+                Id = user.Id.ToString(),
+                Email = user.Email,
+                Name = $"{user.FirstName} {user.LastName}".Trim(),
+                Role = user.Role.ToString(),
+                TenantId = user.TenantId.ToString(),
+                TenantName = user.Tenant?.Name ?? string.Empty
+            }
+        };
 
         return response;
     }

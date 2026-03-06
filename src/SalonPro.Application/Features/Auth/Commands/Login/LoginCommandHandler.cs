@@ -1,5 +1,5 @@
-using AutoMapper;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Application.Common.Interfaces;
 using SalonPro.Application.Features.Auth.DTOs;
@@ -12,27 +12,27 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPasswordService _passwordService;
     private readonly IJwtTokenService _jwtTokenService;
-    private readonly IMapper _mapper;
     private readonly IDateTimeService _dateTimeService;
 
     public LoginCommandHandler(
         IUnitOfWork unitOfWork,
         IPasswordService passwordService,
         IJwtTokenService jwtTokenService,
-        IMapper mapper,
         IDateTimeService dateTimeService)
     {
         _unitOfWork = unitOfWork;
         _passwordService = passwordService;
         _jwtTokenService = jwtTokenService;
-        _mapper = mapper;
         _dateTimeService = dateTimeService;
     }
 
     public async Task<AuthResponseDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        var user = await _unitOfWork.Users.FirstOrDefaultAsync(
-            u => u.Email == request.Email.ToLower() && u.IsActive, cancellationToken);
+        var user = await _unitOfWork.Users.Query()
+            .Include(u => u.Tenant)
+            .Where(u => u.Email == request.Email.ToLower() && u.IsActive)
+            .Where(u => !request.TenantId.HasValue || u.TenantId == request.TenantId.Value)
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (user == null || !_passwordService.VerifyPassword(request.Password, user.PasswordHash))
             throw new UnauthorizedException("Invalid email or password.");
@@ -45,10 +45,21 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var response = _mapper.Map<AuthResponseDto>(user);
-        response.AccessToken = accessToken;
-        response.RefreshToken = refreshToken;
-        response.ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60);
+        var response = new AuthResponseDto
+        {
+            AccessToken = accessToken,
+            RefreshToken = refreshToken,
+            ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60),
+            User = new AuthUserDto
+            {
+                Id = user.Id.ToString(),
+                Email = user.Email,
+                Name = $"{user.FirstName} {user.LastName}".Trim(),
+                Role = user.Role.ToString(),
+                TenantId = user.TenantId.ToString(),
+                TenantName = user.Tenant?.Name ?? string.Empty
+            }
+        };
 
         return response;
     }

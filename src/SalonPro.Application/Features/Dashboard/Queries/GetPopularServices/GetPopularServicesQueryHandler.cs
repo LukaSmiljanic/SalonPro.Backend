@@ -10,14 +10,19 @@ namespace SalonPro.Application.Features.Dashboard.Queries.GetPopularServices;
 public class GetPopularServicesQueryHandler : IRequestHandler<GetPopularServicesQuery, List<PopularServiceDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantService _currentTenantService;
 
-    public GetPopularServicesQueryHandler(IUnitOfWork unitOfWork)
+    public GetPopularServicesQueryHandler(IUnitOfWork unitOfWork, ICurrentTenantService currentTenantService)
     {
         _unitOfWork = unitOfWork;
+        _currentTenantService = currentTenantService;
     }
 
     public async Task<List<PopularServiceDto>> Handle(GetPopularServicesQuery request, CancellationToken cancellationToken)
     {
+        var tenantId = _currentTenantService.TenantId
+            ?? throw new InvalidOperationException("Tenant ID is required for popular services.");
+
         var today = DateTime.UtcNow.Date;
         DateTime startDate;
 
@@ -39,6 +44,7 @@ public class GetPopularServicesQueryHandler : IRequestHandler<GetPopularServices
                 .ThenInclude(s => s.Category)
             .Include(aps => aps.Appointment)
             .Where(aps =>
+                aps.Appointment.TenantId == tenantId &&
                 aps.Appointment.StartTime >= startDate &&
                 aps.Appointment.StartTime < endDate &&
                 aps.Appointment.Status != AppointmentStatus.Cancelled)
@@ -53,7 +59,7 @@ public class GetPopularServicesQueryHandler : IRequestHandler<GetPopularServices
                 g.Key.Name,
                 g.Count(),
                 g.Key.Type,
-                g.Key.ColorHex
+                g.Key.ColorHex ?? "#CCCCCC"
             ))
             .OrderByDescending(p => p.BookingCount)
             .Take(10)
