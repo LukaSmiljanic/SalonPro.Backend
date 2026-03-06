@@ -14,6 +14,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<AppointmentService> AppointmentServices { get; }
     IRepository<ClientNote> ClientNotes { get; }
     IRepository<WorkingHours> WorkingHours { get; }
+    IRepository<Payment> Payments { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

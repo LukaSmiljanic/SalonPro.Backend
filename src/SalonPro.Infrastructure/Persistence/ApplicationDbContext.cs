@@ -29,6 +29,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<AppointmentService> AppointmentServices => Set<AppointmentService>();
     public DbSet<ClientNote> ClientNotes => Set<ClientNote>();
     public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
+    public DbSet<Payment> Payments => Set<Payment>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

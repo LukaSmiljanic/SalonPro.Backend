@@ -24,4 +24,5 @@ public class Tenant : BaseAuditableEntity
     public ICollection<StaffMember> StaffMembers { get; set; } = new List<StaffMember>();
     public ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
     public ICollection<WorkingHours> WorkingHours { get; set; } = new List<WorkingHours>();
+    public ICollection<Payment> Payments { get; set; } = new List<Payment>();
 }

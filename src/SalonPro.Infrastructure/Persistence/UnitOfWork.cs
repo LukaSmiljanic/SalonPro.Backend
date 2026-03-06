@@ -20,6 +20,7 @@ public class UnitOfWork : IUnitOfWork
         AppointmentServices = new Repository<AppointmentService>(context);
         ClientNotes = new Repository<ClientNote>(context);
         WorkingHours = new Repository<WorkingHours>(context);
+        Payments = new Repository<Payment>(context);
     }
 
     public IRepository<Tenant> Tenants { get; }
@@ -32,6 +33,7 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<AppointmentService> AppointmentServices { get; }
     public IRepository<ClientNote> ClientNotes { get; }
     public IRepository<WorkingHours> WorkingHours { get; }
+    public IRepository<Payment> Payments { get; }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         => await _context.SaveChangesAsync(cancellationToken);
