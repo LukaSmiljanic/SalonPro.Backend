@@ -44,7 +44,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
   const { data: staff = [] } = useQuery({
     queryKey: queryKeys.staff.list(),
-    queryFn: getStaff,
+    queryFn: () => getStaff(),
     enabled: isOpen,
   });
 

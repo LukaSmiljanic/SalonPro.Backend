@@ -49,7 +49,7 @@ export const CalendarPage: React.FC = () => {
 
   const { data: staff = [] } = useQuery({
     queryKey: queryKeys.staff.list(),
-    queryFn: getStaff,
+    queryFn: () => getStaff(),
   });
 
   const appointments = appointmentsData?.items ?? [];
@@ -168,7 +168,7 @@ export const CalendarPage: React.FC = () => {
 
       {error && (
         <div className="container-main py-2">
-          <div className="p-3 bg-error-bg border border-error/20 rounded-lg text-sm text-error">{error}</div>
+          <div className="p-3 bg-error-bg border border-error/20 rounded-lg text-sm text-error">{error?.message ?? 'Greška'}</div>
         </div>
       )}
 
