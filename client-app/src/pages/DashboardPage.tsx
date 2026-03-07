@@ -17,6 +17,7 @@ import { Button } from '../components/Button';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { CreateAppointmentModal } from '../components/CreateAppointmentModal';
+import { AiInsightsPanel } from '../components/AiInsightsPanel';
 
 const REFRESH_INTERVAL_MS = 60_000;
 
@@ -279,6 +280,10 @@ export const DashboardPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* AI Insights Panel */}
+      <AiInsightsPanel />
+
       <CreateAppointmentModal
         isOpen={createAppointmentModalOpen}
         onClose={() => setCreateAppointmentModalOpen(false)}

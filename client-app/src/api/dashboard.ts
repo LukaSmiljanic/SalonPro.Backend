@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { DashboardStats, RevenueChartPoint, AppointmentStatus, BirthdayReminder } from '../types';
+import type { DashboardStats, RevenueChartPoint, AppointmentStatus, BirthdayReminder, DashboardInsights, Insight, InsightPriority } from '../types';
 
 /** Backend GET /dashboard/stats response (camelCase) */
 interface DashboardStatsResponse {
@@ -88,4 +88,46 @@ export const getRevenueChart = async (days: number = 30): Promise<RevenueChartPo
     date: typeof p.date === 'string' ? p.date.slice(0, 10) : p.date,
     revenue: Number(p.value),
   }));
+};
+
+/** Backend GET /dashboard/insights response */
+interface DashboardInsightsResponse {
+  insights: Array<{
+    type: string;
+    priority: string;
+    title: string;
+    description: string;
+    icon: string;
+    actionLabel?: string;
+    actionData?: string;
+  }>;
+  inactiveClientsCount: number;
+  scheduleGapsCount: number;
+  weekRevenueChangePercent: number;
+}
+
+function mapPriority(p: string): InsightPriority {
+  if (p === 'Urgent') return 'Urgent';
+  if (p === 'High') return 'High';
+  if (p === 'Medium') return 'Medium';
+  return 'Low';
+}
+
+export const getDashboardInsights = async (): Promise<DashboardInsights> => {
+  const response = await apiClient.get<DashboardInsightsResponse>('/dashboard/insights');
+  const d = response.data;
+  return {
+    insights: (d.insights ?? []).map(i => ({
+      type: i.type as Insight['type'],
+      priority: mapPriority(i.priority),
+      title: i.title,
+      description: i.description,
+      icon: i.icon,
+      actionLabel: i.actionLabel,
+      actionData: i.actionData,
+    })),
+    inactiveClientsCount: d.inactiveClientsCount ?? 0,
+    scheduleGapsCount: d.scheduleGapsCount ?? 0,
+    weekRevenueChangePercent: d.weekRevenueChangePercent ?? 0,
+  };
 };

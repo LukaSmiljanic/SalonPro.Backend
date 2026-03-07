@@ -8,6 +8,8 @@ using SalonPro.Application.Features.Clients.Queries.GetClientById;
 using SalonPro.Application.Features.Clients.Queries.GetClientLoyalty;
 using SalonPro.Application.Features.Clients.Queries.GetClients;
 using SalonPro.Application.Features.Clients.Queries.SearchClients;
+using SalonPro.Application.Features.Insights.DTOs;
+using SalonPro.Application.Features.Insights.Queries.GetClientInsights;
 
 namespace SalonPro.API.Controllers;
 
@@ -82,6 +84,15 @@ public class ClientsController : ApiControllerBase
     public async Task<IActionResult> GetClientLoyalty([FromRoute] Guid id)
     {
         var result = await Mediator.Send(new GetClientLoyaltyQuery(id));
+        return Ok(result);
+    }
+
+    [HttpGet("{id:guid}/insights")]
+    [ProducesResponseType(typeof(ClientInsightsDto), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetClientInsights([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetClientInsightsQuery(id));
         return Ok(result);
     }
 }

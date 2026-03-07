@@ -7,6 +7,7 @@ export const queryKeys = {
     all: ['dashboard'] as const,
     stats: () => [...queryKeys.dashboard.all, 'stats'] as const,
     revenueChart: (days: number) => [...queryKeys.dashboard.all, 'revenue', days] as const,
+    insights: () => [...queryKeys.dashboard.all, 'insights'] as const,
   },
   appointments: {
     all: ['appointments'] as const,
@@ -18,6 +19,7 @@ export const queryKeys = {
     list: (params: { search?: string; page: number; pageSize: number }) =>
       [...queryKeys.clients.all, 'list', params] as const,
     detail: (id: string) => [...queryKeys.clients.all, 'detail', id] as const,
+    insights: (id: string) => [...queryKeys.clients.all, 'insights', id] as const,
   },
   services: {
     all: ['services'] as const,

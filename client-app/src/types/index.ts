@@ -158,6 +158,50 @@ export interface CreateClientRequest {
   notes?: string;
 }
 
+// ─── AI Insights ─────────────────────────────────────────────────────────
+
+export type InsightType =
+  | 'ScheduleGap'
+  | 'ClientReEngagement'
+  | 'RevenueChange'
+  | 'NoShowRisk'
+  | 'PeakHours'
+  | 'ServiceUpsell'
+  | 'VisitPattern'
+  | 'RebookingSuggestion'
+  | 'ChurnRisk'
+  | 'SpendingTrend'
+  | 'PreferredStaff'
+  | 'ServiceHistory';
+
+export type InsightPriority = 'Low' | 'Medium' | 'High' | 'Urgent';
+
+export interface Insight {
+  type: InsightType;
+  priority: InsightPriority;
+  title: string;
+  description: string;
+  icon: string;
+  actionLabel?: string;
+  actionData?: string;
+}
+
+export interface DashboardInsights {
+  insights: Insight[];
+  inactiveClientsCount: number;
+  scheduleGapsCount: number;
+  weekRevenueChangePercent: number;
+}
+
+export interface ClientInsights {
+  insights: Insight[];
+  averageVisitCycleDays: number;
+  suggestedNextVisit?: string;
+  preferredStaffName?: string;
+  topService?: string;
+  averageSpendPerVisit: number;
+}
+
 // ─── Staff ───────────────────────────────────────────────────────────────────
 
 export interface StaffMember {

@@ -4,6 +4,8 @@ using SalonPro.Application.Features.Dashboard.Queries.GetBirthdayReminders;
 using SalonPro.Application.Features.Dashboard.Queries.GetDashboardStats;
 using SalonPro.Application.Features.Dashboard.Queries.GetPopularServices;
 using SalonPro.Application.Features.Dashboard.Queries.GetRevenueChart;
+using SalonPro.Application.Features.Insights.DTOs;
+using SalonPro.Application.Features.Insights.Queries.GetDashboardInsights;
 
 namespace SalonPro.API.Controllers;
 
@@ -40,6 +42,14 @@ public class DashboardController : ApiControllerBase
     public async Task<IActionResult> GetBirthdayReminders([FromQuery] int days = 7)
     {
         var result = await Mediator.Send(new GetBirthdayRemindersQuery(days));
+        return Ok(result);
+    }
+
+    [HttpGet("insights")]
+    [ProducesResponseType(typeof(DashboardInsightsDto), 200)]
+    public async Task<IActionResult> GetDashboardInsights()
+    {
+        var result = await Mediator.Send(new GetDashboardInsightsQuery());
         return Ok(result);
     }
 }

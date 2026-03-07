@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { Client, ClientLoyalty, CreateClientRequest, ClientListResponse } from '../types';
+import type { Client, ClientLoyalty, CreateClientRequest, ClientListResponse, ClientInsights, Insight, InsightPriority } from '../types';
 
 /** Backend GET /clients response (camelCase) */
 interface PaginatedClientsResponse {
@@ -130,4 +130,50 @@ export const updateClient = async (id: string, data: Partial<CreateClientRequest
 
 export const deleteClient = async (id: string): Promise<void> => {
   await apiClient.delete(`/clients/${id}`);
+};
+
+/** Backend GET /clients/:id/insights response */
+interface ClientInsightsResponse {
+  insights: Array<{
+    type: string;
+    priority: string;
+    title: string;
+    description: string;
+    icon: string;
+    actionLabel?: string;
+    actionData?: string;
+  }>;
+  averageVisitCycleDays: number;
+  suggestedNextVisit?: string | null;
+  preferredStaffName?: string | null;
+  topService?: string | null;
+  averageSpendPerVisit: number;
+}
+
+function mapPriority(p: string): InsightPriority {
+  if (p === 'Urgent') return 'Urgent';
+  if (p === 'High') return 'High';
+  if (p === 'Medium') return 'Medium';
+  return 'Low';
+}
+
+export const getClientInsights = async (id: string): Promise<ClientInsights> => {
+  const response = await apiClient.get<ClientInsightsResponse>(`/clients/${id}/insights`);
+  const d = response.data;
+  return {
+    insights: (d.insights ?? []).map(i => ({
+      type: i.type as Insight['type'],
+      priority: mapPriority(i.priority),
+      title: i.title,
+      description: i.description,
+      icon: i.icon,
+      actionLabel: i.actionLabel,
+      actionData: i.actionData,
+    })),
+    averageVisitCycleDays: d.averageVisitCycleDays ?? 0,
+    suggestedNextVisit: d.suggestedNextVisit ?? undefined,
+    preferredStaffName: d.preferredStaffName ?? undefined,
+    topService: d.topService ?? undefined,
+    averageSpendPerVisit: d.averageSpendPerVisit ?? 0,
+  };
 };

@@ -10,6 +10,7 @@ import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { ClientInsightsPanel } from '../components/ClientInsightsPanel';
 import { format, parseISO } from 'date-fns';
 
 const PAGE_SIZE = 20;
@@ -371,8 +372,11 @@ export const ClientsPage: React.FC = () => {
               </div>
             )}
 
+            {/* AI Insights */}
+            <ClientInsightsPanel clientId={selectedClient.id} />
+
             {/* Actions */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-4">
               <Button
                 variant="secondary"
                 size="sm"
