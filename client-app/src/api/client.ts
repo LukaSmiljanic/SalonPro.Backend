@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL =  'https://localhost:7001/api';
+const API_BASE_URL = 'https://salonpro.runasp.net/api';
 
 const TOKEN_KEY = 'salonpro_token';
 const REFRESH_TOKEN_KEY = 'salonpro_refresh_token';
