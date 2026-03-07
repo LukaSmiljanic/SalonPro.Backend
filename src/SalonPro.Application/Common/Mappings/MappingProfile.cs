@@ -63,7 +63,8 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ClientNotes, opt => opt.MapFrom(src =>
                 src.ClientNotes
                     .OrderByDescending(n => n.CreatedAt)
-                    .Select(n => new ClientNoteDto(n.Id, n.Content, n.CreatedAt, n.CreatedBy))));
+                    .Select(n => new ClientNoteDto(n.Id, n.Content, n.CreatedAt, n.CreatedBy))))
+            .ForMember(dest => dest.Loyalty, opt => opt.Ignore());
 
         // Appointment list (for calendar/list views)
         CreateMap<Appointment, AppointmentListDto>()

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using SalonPro.Application.Features.Dashboard.DTOs;
+using SalonPro.Application.Features.Dashboard.Queries.GetBirthdayReminders;
 using SalonPro.Application.Features.Dashboard.Queries.GetDashboardStats;
 using SalonPro.Application.Features.Dashboard.Queries.GetPopularServices;
 using SalonPro.Application.Features.Dashboard.Queries.GetRevenueChart;
@@ -31,6 +32,14 @@ public class DashboardController : ApiControllerBase
     public async Task<IActionResult> GetPopularServices([FromQuery] ChartPeriod period = ChartPeriod.Week)
     {
         var result = await Mediator.Send(new GetPopularServicesQuery(period));
+        return Ok(result);
+    }
+
+    [HttpGet("birthday-reminders")]
+    [ProducesResponseType(typeof(List<BirthdayReminderDto>), 200)]
+    public async Task<IActionResult> GetBirthdayReminders([FromQuery] int days = 7)
+    {
+        var result = await Mediator.Send(new GetBirthdayRemindersQuery(days));
         return Ok(result);
     }
 }

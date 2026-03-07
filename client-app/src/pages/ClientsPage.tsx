@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2 } from 'lucide-react';
+import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2, Award, Star, Trophy, Crown } from 'lucide-react';
 import { getClients, createClient, updateClient, deleteClient, getClient } from '../api/clients';
-import type { Client, CreateClientRequest } from '../types';
+import type { Client, CreateClientRequest, LoyaltyTier } from '../types';
 import { queryKeys } from '../lib/queryKeys';
 import { ClientListItem } from '../components/ClientListItem';
 import { Button } from '../components/Button';
@@ -13,6 +13,31 @@ import { EmptyState } from '../components/EmptyState';
 import { format, parseISO } from 'date-fns';
 
 const PAGE_SIZE = 20;
+
+const loyaltyColors: Record<string, { bg: string; border: string; text: string }> = {
+  Bronze: { bg: '#CD7F3220', border: '#CD7F3240', text: '#CD7F32' },
+  Silver: { bg: '#C0C0C020', border: '#C0C0C040', text: '#808080' },
+  Gold: { bg: '#FFD70020', border: '#FFD70040', text: '#B8860B' },
+  Platinum: { bg: '#5B3A8C15', border: '#5B3A8C30', text: '#5B3A8C' },
+};
+
+const loyaltyLabels: Record<string, string> = {
+  Bronze: 'Bronze nivo',
+  Silver: 'Silver nivo',
+  Gold: 'Gold nivo',
+  Platinum: 'Platinum nivo',
+};
+
+function getLoyaltyIcon(tier: LoyaltyTier) {
+  const size = 15;
+  switch (tier) {
+    case 'Bronze': return <Award size={size} color="#CD7F32" />;
+    case 'Silver': return <Star size={size} color="#808080" />;
+    case 'Gold': return <Trophy size={size} color="#B8860B" />;
+    case 'Platinum': return <Crown size={size} color="#5B3A8C" />;
+    default: return null;
+  }
+}
 
 export const ClientsPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -286,6 +311,57 @@ export const ClientsPage: React.FC = () => {
                 <p className="text-xs text-text-faint">Potrošeno</p>
               </div>
             </div>
+
+            {/* Loyalty Section */}
+            {selectedClient.loyalty && selectedClient.loyalty.loyaltyTier !== 'None' && (
+              <div className="mb-4 p-3 rounded-lg border" style={{
+                borderColor: loyaltyColors[selectedClient.loyalty.loyaltyTier]?.border || 'var(--color-border)',
+                backgroundColor: loyaltyColors[selectedClient.loyalty.loyaltyTier]?.bg || 'var(--color-surface-2)',
+              }}>
+                <div className="flex items-center gap-2 mb-1">
+                  {getLoyaltyIcon(selectedClient.loyalty.loyaltyTier)}
+                  <span className="text-sm font-semibold" style={{ color: loyaltyColors[selectedClient.loyalty.loyaltyTier]?.text || 'var(--color-text)' }}>
+                    {loyaltyLabels[selectedClient.loyalty.loyaltyTier] || selectedClient.loyalty.loyaltyTier}
+                  </span>
+                </div>
+                {selectedClient.loyalty.loyaltyBenefit && (
+                  <p className="text-xs text-text-muted mb-1">
+                    Pogodnost: {selectedClient.loyalty.loyaltyBenefit}
+                  </p>
+                )}
+                {selectedClient.loyalty.nextMilestone && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between text-xs text-text-faint mb-1">
+                      <span>Sledeći nivo: {selectedClient.loyalty.nextMilestoneBenefit}</span>
+                      <span>{selectedClient.loyalty.visitsUntilNextMilestone} poseta do cilja</span>
+                    </div>
+                    <div className="w-full bg-surface rounded-full h-1.5">
+                      <div
+                        className="h-1.5 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, ((selectedClient.totalVisits / selectedClient.loyalty.nextMilestone) * 100))}%`,
+                          backgroundColor: loyaltyColors[selectedClient.loyalty.loyaltyTier]?.text || '#5B3A8C',
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {selectedClient.loyalty && selectedClient.loyalty.loyaltyTier === 'None' && selectedClient.loyalty.nextMilestone && (
+              <div className="mb-4 p-3 rounded-lg bg-surface-2 border border-border">
+                <p className="text-xs text-text-muted mb-1">
+                  Loyalty program: Još {selectedClient.loyalty.visitsUntilNextMilestone} poseta do pogodnosti ({selectedClient.loyalty.nextMilestoneBenefit})
+                </p>
+                <div className="w-full bg-surface rounded-full h-1.5">
+                  <div
+                    className="h-1.5 rounded-full bg-[#5B3A8C]/40 transition-all"
+                    style={{ width: `${Math.min(100, ((selectedClient.totalVisits / selectedClient.loyalty.nextMilestone) * 100))}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Notes */}
             {selectedClient.notes && (

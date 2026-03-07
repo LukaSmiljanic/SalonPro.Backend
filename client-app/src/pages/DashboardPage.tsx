@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { format, parseISO, isToday, isTomorrow } from 'date-fns';
 import { srLatn } from 'date-fns/locale';
 import {
-  TrendingUp, Users, Calendar, CheckCircle2, Plus, RefreshCw
+  TrendingUp, Users, Calendar, CheckCircle2, Plus, RefreshCw, Cake, Gift, Phone
 } from 'lucide-react';
 import { getDashboardStats, getRevenueChart } from '../api/dashboard';
 import type { DashboardStats, RevenueChartPoint } from '../types';
@@ -128,6 +128,55 @@ export const DashboardPage: React.FC = () => {
             icon={<CheckCircle2 size={16} />}
             subtext="Ovog meseca"
           />
+        </div>
+      )}
+
+      {/* Birthday Reminders Widget */}
+      {stats?.birthdayReminders && stats.birthdayReminders.length > 0 && (
+        <div className="card card-padded">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-8 h-8 rounded-lg bg-[#5B3A8C]/10 flex items-center justify-center">
+              <Cake size={16} className="text-[#5B3A8C]" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-text">Rođendani ove nedelje</h2>
+              <p className="text-xs text-text-faint">{stats.birthdayReminders.length} klijent{stats.birthdayReminders.length === 1 ? '' : 'a'}</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {stats.birthdayReminders.map(reminder => (
+              <div
+                key={reminder.clientId}
+                className="flex items-center gap-3 p-3 bg-surface-2 rounded-lg"
+              >
+                <div className="w-9 h-9 rounded-full bg-[#5B3A8C]/10 flex items-center justify-center shrink-0">
+                  <Gift size={15} className="text-[#5B3A8C]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-text truncate">{reminder.fullName}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-muted">
+                      {reminder.daysUntilBirthday === 0
+                        ? '🎂 Danas!'
+                        : reminder.daysUntilBirthday === 1
+                        ? 'Sutra'
+                        : `Za ${reminder.daysUntilBirthday} dana`}
+                    </span>
+                    <span className="text-xs text-text-faint">· Puni {reminder.age} god.</span>
+                  </div>
+                </div>
+                {reminder.phone && (
+                  <a
+                    href={`tel:${reminder.phone}`}
+                    className="p-1.5 rounded-md text-text-faint hover:text-[#5B3A8C] hover:bg-[#5B3A8C]/10 transition-interactive"
+                    title="Pozovi"
+                  >
+                    <Phone size={14} />
+                  </a>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -48,6 +48,17 @@ export interface DashboardStats {
   activeClients: number;
   completionRate: number;
   upcomingAppointments: AppointmentSummary[];
+  birthdayReminders: BirthdayReminder[];
+}
+
+export interface BirthdayReminder {
+  clientId: string;
+  fullName: string;
+  phone?: string;
+  email?: string;
+  dateOfBirth: string;
+  daysUntilBirthday: number;
+  age: number;
 }
 
 export interface AppointmentSummary {
@@ -118,7 +129,19 @@ export interface Client {
   totalSpent: number;
   lastVisit?: string;
   createdAt: string;
+  loyalty?: ClientLoyalty;
 }
+
+export interface ClientLoyalty {
+  totalVisits: number;
+  loyaltyTier: LoyaltyTier;
+  loyaltyBenefit?: string;
+  nextMilestone?: number;
+  visitsUntilNextMilestone: number;
+  nextMilestoneBenefit?: string;
+}
+
+export type LoyaltyTier = 'None' | 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
 
 export interface ClientListResponse {
   items: Client[];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Phone, Mail, Calendar, TrendingUp } from 'lucide-react';
+import { Phone, Mail, Calendar, TrendingUp, Award, Star, Trophy, Crown } from 'lucide-react';
 import type { Client } from '../types';
 import { format, parseISO } from 'date-fns';
 
@@ -52,9 +52,19 @@ export const ClientListItem: React.FC<ClientListItemProps> = ({ client, onClick,
         <span className="flex items-center gap-1 text-xs text-text-muted">
           <Calendar size={11} />{lastVisitStr}
         </span>
-        <span className="flex items-center gap-1 text-xs font-medium text-success">
-          <TrendingUp size={11} />{client.totalVisits} visits
-        </span>
+        <div className="flex items-center gap-1.5">
+          {client.loyalty && client.loyalty.loyaltyTier !== 'None' && (
+            <span title={client.loyalty.loyaltyTier}>
+              {client.loyalty.loyaltyTier === 'Bronze' && <Award size={12} color="#CD7F32" />}
+              {client.loyalty.loyaltyTier === 'Silver' && <Star size={12} color="#808080" />}
+              {client.loyalty.loyaltyTier === 'Gold' && <Trophy size={12} color="#B8860B" />}
+              {client.loyalty.loyaltyTier === 'Platinum' && <Crown size={12} color="#5B3A8C" />}
+            </span>
+          )}
+          <span className="flex items-center gap-1 text-xs font-medium text-success">
+            <TrendingUp size={11} />{client.totalVisits} poseta
+          </span>
+        </div>
       </div>
     </div>
   );

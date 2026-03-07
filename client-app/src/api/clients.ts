@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { Client, CreateClientRequest, ClientListResponse } from '../types';
+import type { Client, ClientLoyalty, CreateClientRequest, ClientListResponse } from '../types';
 
 /** Backend GET /clients response (camelCase) */
 interface PaginatedClientsResponse {
@@ -37,6 +37,14 @@ interface ClientDetailDtoResponse {
   lastVisitDate?: string | null;
   visitHistory: Array<{ date: string; serviceName: string; staffName: string; price: number }>;
   clientNotes: Array<{ id: string; content: string; createdAt: string; createdBy?: string | null }>;
+  loyalty?: {
+    totalVisits: number;
+    loyaltyTier: string;
+    loyaltyBenefit?: string | null;
+    nextMilestone?: number | null;
+    visitsUntilNextMilestone: number;
+    nextMilestoneBenefit?: string | null;
+  } | null;
 }
 
 function mapListDtoToClient(item: ClientListDtoItem): Client {
@@ -58,6 +66,15 @@ function mapListDtoToClient(item: ClientListDtoItem): Client {
 }
 
 function mapDetailDtoToClient(d: ClientDetailDtoResponse): Client {
+  const loyalty: ClientLoyalty | undefined = d.loyalty ? {
+    totalVisits: d.loyalty.totalVisits,
+    loyaltyTier: (d.loyalty.loyaltyTier as ClientLoyalty['loyaltyTier']) || 'None',
+    loyaltyBenefit: d.loyalty.loyaltyBenefit ?? undefined,
+    nextMilestone: d.loyalty.nextMilestone ?? undefined,
+    visitsUntilNextMilestone: d.loyalty.visitsUntilNextMilestone,
+    nextMilestoneBenefit: d.loyalty.nextMilestoneBenefit ?? undefined,
+  } : undefined;
+
   return {
     id: d.id,
     firstName: d.firstName,
@@ -69,6 +86,7 @@ function mapDetailDtoToClient(d: ClientDetailDtoResponse): Client {
     totalSpent: d.totalSpent,
     lastVisit: d.lastVisitDate ?? undefined,
     createdAt: '',
+    loyalty,
   };
 }
 

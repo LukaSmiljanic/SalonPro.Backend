@@ -51,6 +51,18 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             .Select(n => new ClientNoteDto(n.Id, n.Content, n.CreatedAt, n.CreatedBy))
             .ToList();
 
+        // Compute loyalty info
+        var (tier, benefit) = GetLoyaltyTier(totalVisits);
+        var (nextMilestone, visitsUntil, nextBenefit) = GetNextMilestone(totalVisits);
+        var loyalty = new ClientLoyaltyDto(
+            totalVisits,
+            tier.ToString(),
+            benefit,
+            nextMilestone,
+            visitsUntil,
+            nextBenefit
+        );
+
         return new ClientDetailDto(
             client.Id,
             client.FirstName,
@@ -65,7 +77,33 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             totalSpent,
             lastVisitDate,
             visitHistory,
-            notes
+            notes,
+            loyalty
         );
+    }
+
+    private static (LoyaltyTier Tier, string? Benefit) GetLoyaltyTier(int visits)
+    {
+        if (visits >= 100) return (LoyaltyTier.Platinum, "Besplatna usluga + poklon");
+        if (visits >= 50) return (LoyaltyTier.Gold, "Besplatna usluga");
+        if (visits >= 25) return (LoyaltyTier.Silver, "30% popusta");
+        if (visits >= 10) return (LoyaltyTier.Bronze, "20% popusta");
+        return (LoyaltyTier.None, null);
+    }
+
+    private static (int? NextMilestone, int VisitsUntil, string? NextBenefit) GetNextMilestone(int visits)
+    {
+        int[] milestones = [10, 25, 50, 100];
+        string[] benefits = ["20% popusta", "30% popusta", "Besplatna usluga", "Besplatna usluga + poklon"];
+
+        for (int i = 0; i < milestones.Length; i++)
+        {
+            if (visits < milestones[i])
+            {
+                return (milestones[i], milestones[i] - visits, benefits[i]);
+            }
+        }
+
+        return (null, 0, null);
     }
 }

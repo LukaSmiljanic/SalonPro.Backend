@@ -28,5 +28,6 @@ public record ClientDetailDto(
     decimal TotalSpent,
     DateTime? LastVisitDate,
     List<VisitHistoryDto> VisitHistory,
-    List<ClientNoteDto> ClientNotes
+    List<ClientNoteDto> ClientNotes,
+    ClientLoyaltyDto? Loyalty
 );

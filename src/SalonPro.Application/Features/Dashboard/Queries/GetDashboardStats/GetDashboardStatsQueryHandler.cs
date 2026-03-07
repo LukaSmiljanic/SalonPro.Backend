@@ -170,6 +170,44 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             a.Status.ToString()
         )).ToList();
 
+        // Birthday reminders — clients with birthdays in the next 7 days
+        var clientsWithBirthday = await _unitOfWork.Clients.Query()
+            .Where(c => c.TenantId == tenantId && c.IsActive && c.DateOfBirth.HasValue)
+            .AsNoTracking()
+            .Select(c => new
+            {
+                c.Id,
+                FullName = c.FirstName + " " + c.LastName,
+                c.Phone,
+                c.Email,
+                DateOfBirth = c.DateOfBirth!.Value
+            })
+            .ToListAsync(cancellationToken);
+
+        var birthdayReminders = new List<BirthdayReminderDto>();
+        foreach (var client in clientsWithBirthday)
+        {
+            var birthdayThisYear = new DateTime(targetDate.Year, client.DateOfBirth.Month, client.DateOfBirth.Day);
+            if (birthdayThisYear < targetDate)
+                birthdayThisYear = birthdayThisYear.AddYears(1);
+
+            var daysUntil = (birthdayThisYear - targetDate).Days;
+            if (daysUntil <= 7)
+            {
+                var age = birthdayThisYear.Year - client.DateOfBirth.Year;
+                birthdayReminders.Add(new BirthdayReminderDto(
+                    client.Id,
+                    client.FullName,
+                    client.Phone,
+                    client.Email,
+                    client.DateOfBirth,
+                    daysUntil,
+                    age
+                ));
+            }
+        }
+        birthdayReminders = birthdayReminders.OrderBy(r => r.DaysUntilBirthday).ToList();
+
         return new DashboardStatsDto(
             todayRevenue,
             revenueChangePercent,
@@ -182,7 +220,8 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
             weekRevenue,
             totalClients,
             completionRate,
-            upcomingDtos
+            upcomingDtos,
+            birthdayReminders
         );
     }
 }
