@@ -5,6 +5,7 @@ using SalonPro.Application.Features.Clients.Commands.DeleteClient;
 using SalonPro.Application.Features.Clients.Commands.UpdateClient;
 using SalonPro.Application.Features.Clients.DTOs;
 using SalonPro.Application.Features.Clients.Queries.GetClientById;
+using SalonPro.Application.Features.Clients.Queries.GetClientLoyalty;
 using SalonPro.Application.Features.Clients.Queries.GetClients;
 using SalonPro.Application.Features.Clients.Queries.SearchClients;
 
@@ -73,5 +74,14 @@ public class ClientsController : ApiControllerBase
     {
         await Mediator.Send(new DeleteClientCommand(id));
         return NoContent();
+    }
+
+    [HttpGet("{id:guid}/loyalty")]
+    [ProducesResponseType(typeof(ClientLoyaltyDto), 200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> GetClientLoyalty([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new GetClientLoyaltyQuery(id));
+        return Ok(result);
     }
 }

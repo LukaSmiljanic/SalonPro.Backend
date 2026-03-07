@@ -12,5 +12,6 @@ public record DashboardStatsDto(
     decimal WeekRevenue,
     int TotalClients,
     decimal CompletionRate,
-    List<UpcomingAppointmentDto> UpcomingAppointments
+    List<UpcomingAppointmentDto> UpcomingAppointments,
+    List<BirthdayReminderDto> BirthdayReminders
 );

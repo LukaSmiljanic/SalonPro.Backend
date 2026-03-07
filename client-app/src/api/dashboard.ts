@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { DashboardStats, RevenueChartPoint, AppointmentStatus } from '../types';
+import type { DashboardStats, RevenueChartPoint, AppointmentStatus, BirthdayReminder } from '../types';
 
 /** Backend GET /dashboard/stats response (camelCase) */
 interface DashboardStatsResponse {
@@ -21,6 +21,15 @@ interface DashboardStatsResponse {
     staffName: string;
     startTime: string;
     status: string;
+  }>;
+  birthdayReminders: Array<{
+    clientId: string;
+    fullName: string;
+    phone?: string;
+    email?: string;
+    dateOfBirth: string;
+    daysUntilBirthday: number;
+    age: number;
   }>;
 }
 
@@ -55,7 +64,21 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       startTime: a.startTime,
       status: mapStatus(a.status),
     })),
+    birthdayReminders: (d.birthdayReminders ?? []).map(b => ({
+      clientId: b.clientId,
+      fullName: b.fullName,
+      phone: b.phone,
+      email: b.email,
+      dateOfBirth: b.dateOfBirth,
+      daysUntilBirthday: b.daysUntilBirthday,
+      age: b.age,
+    })),
   };
+};
+
+export const getBirthdayReminders = async (days: number = 7): Promise<BirthdayReminder[]> => {
+  const response = await apiClient.get<BirthdayReminder[]>(`/dashboard/birthday-reminders?days=${days}`);
+  return response.data ?? [];
 };
 
 export const getRevenueChart = async (days: number = 30): Promise<RevenueChartPoint[]> => {
