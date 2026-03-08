@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
   format, parseISO, startOfWeek, addDays, addWeeks, subWeeks, isToday
 } from 'date-fns';
 import { srLatn } from 'date-fns/locale';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Filter } from 'lucide-react';
-import { getAppointments, cancelAppointment, completeAppointment } from '../api/appointments';
+import { getAppointments, cancelAppointment, completeAppointment, rescheduleAppointment } from '../api/appointments';
 import { getStaff } from '../api/staff';
 import type { Appointment, StaffMember } from '../types';
 import { queryKeys } from '../lib/queryKeys';
@@ -29,6 +29,16 @@ export const CalendarPage: React.FC = () => {
   const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createModalDate, setCreateModalDate] = useState<Date | undefined>(undefined);
+
+  // Drag-and-drop state
+  const [draggingAppt, setDraggingAppt] = useState<Appointment | null>(null);
+  const [dragGhostTop, setDragGhostTop] = useState<number>(0);
+  const [dragGhostHeight, setDragGhostHeight] = useState<number>(0);
+  const [dragDayIndex, setDragDayIndex] = useState<number>(-1);
+  const dragStartYRef = useRef(0);
+  const dragOriginalTopRef = useRef(0);
+  const dragColRefMap = useRef<Map<number, HTMLDivElement>>(new Map());
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -70,6 +80,20 @@ export const CalendarPage: React.FC = () => {
     },
   });
 
+  const rescheduleMutation = useMutation({
+    mutationFn: ({ appt, newStartTime }: { appt: Appointment; newStartTime: string }) =>
+      rescheduleAppointment(appt.id, newStartTime, {
+        clientId: appt.clientId,
+        staffId: appt.staffId,
+        serviceId: appt.serviceId,
+        notes: appt.notes,
+        status: appt.status,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+    },
+  });
+
   const getAppointmentsForDay = useCallback((day: Date) => {
     return appointments.filter(appt => {
       try {
@@ -102,6 +126,88 @@ export const CalendarPage: React.FC = () => {
     }
   };
 
+  // --- Double-click on empty slot → open create modal ---
+  const handleSlotDoubleClick = useCallback((day: Date, hour: number) => {
+    const d = new Date(day);
+    d.setHours(hour, 0, 0, 0);
+    setCreateModalDate(d);
+    setCreateModalOpen(true);
+  }, []);
+
+  // --- Drag-and-drop logic ---
+  const handleDragStart = useCallback((appt: Appointment, startY: number, originalTop: number) => {
+    const pos = getApptPosition(appt);
+    setDraggingAppt(appt);
+    dragStartYRef.current = startY;
+    dragOriginalTopRef.current = originalTop;
+    setDragGhostTop(originalTop);
+    setDragGhostHeight(pos.height);
+    // Find which day column this appointment belongs to
+    const apptDate = parseISO(appt.startTime);
+    const dayIdx = weekDays.findIndex(d =>
+      d.getFullYear() === apptDate.getFullYear() &&
+      d.getMonth() === apptDate.getMonth() &&
+      d.getDate() === apptDate.getDate()
+    );
+    setDragDayIndex(dayIdx);
+  }, [weekDays]);
+
+  useEffect(() => {
+    if (!draggingAppt) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - dragStartYRef.current;
+      const newTop = Math.max(0, dragOriginalTopRef.current + deltaY);
+      // Snap to 15-minute increments
+      const snapped = Math.round(newTop / (HOUR_HEIGHT / 4)) * (HOUR_HEIGHT / 4);
+      setDragGhostTop(snapped);
+    };
+
+    const handleMouseUp = () => {
+      if (draggingAppt) {
+        // Calculate new time from ghost position
+        const minutesFromDayStart = (dragGhostTop / HOUR_HEIGHT) * 60;
+        const totalMinutes = DAY_START * 60 + minutesFromDayStart;
+        const newHours = Math.floor(totalMinutes / 60);
+        const newMinutes = Math.round(totalMinutes % 60);
+
+        // Build new start time using the appointment's original day
+        const apptDate = parseISO(draggingAppt.startTime);
+        const newStart = new Date(apptDate);
+        newStart.setHours(newHours, newMinutes, 0, 0);
+
+        // Only reschedule if time actually changed
+        const origStart = parseISO(draggingAppt.startTime);
+        if (newStart.getTime() !== origStart.getTime()) {
+          rescheduleMutation.mutate({
+            appt: draggingAppt,
+            newStartTime: newStart.toISOString(),
+          });
+        }
+      }
+      setDraggingAppt(null);
+      setDragDayIndex(-1);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    // Prevent text selection during drag
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'grabbing';
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [draggingAppt, dragGhostTop, rescheduleMutation]);
+
+  const handleCreateModalClose = useCallback(() => {
+    setCreateModalOpen(false);
+    setCreateModalDate(undefined);
+  }, []);
+
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
 
@@ -111,7 +217,7 @@ export const CalendarPage: React.FC = () => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => setWeekStart(w => subWeeks(w, 1))}
-            className="p-1.5 rounded-md hover:bg-surface-2 text-text-muted"
+            className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-all duration-200"
           >
             <ChevronLeft size={16} />
           </button>
@@ -120,7 +226,7 @@ export const CalendarPage: React.FC = () => {
           </span>
           <button
             onClick={() => setWeekStart(w => addWeeks(w, 1))}
-            className="p-1.5 rounded-md hover:bg-surface-2 text-text-muted"
+            className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-all duration-200"
           >
             <ChevronRight size={16} />
           </button>
@@ -141,7 +247,7 @@ export const CalendarPage: React.FC = () => {
             <select
               value={selectedStaffId}
               onChange={e => setSelectedStaffId(e.target.value)}
-              className="text-sm bg-surface border border-border rounded-md px-2 py-1 text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="text-sm bg-surface border border-border rounded-lg px-2 py-1.5 text-text focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all duration-200"
             >
               <option value="all">Sve osoblje</option>
               {staff.map(s => (
@@ -161,7 +267,7 @@ export const CalendarPage: React.FC = () => {
             Osveži
           </Button>
           <Button size="sm" icon={<Plus size={13} />} onClick={() => setCreateModalOpen(true)}>
-            Novi
+            Novi termin
           </Button>
         </div>
       </div>
@@ -212,26 +318,54 @@ export const CalendarPage: React.FC = () => {
               </div>
 
               {/* Day columns */}
-              {weekDays.map(day => (
-                <div key={day.toISOString()} className="calendar-day-col border-l border-divider">
-                  {/* Hour slots */}
+              {weekDays.map((day, dayIndex) => (
+                <div
+                  key={day.toISOString()}
+                  className="calendar-day-col border-l border-divider"
+                  ref={el => {
+                    if (el) dragColRefMap.current.set(dayIndex, el);
+                  }}
+                >
+                  {/* Hour slots with double-click */}
                   {HOURS.map(hour => (
-                    <div key={hour} className="calendar-slot" />
+                    <div
+                      key={hour}
+                      className="calendar-slot"
+                      onDoubleClick={() => handleSlotDoubleClick(day, hour)}
+                    />
                   ))}
 
                   {/* Appointment blocks */}
                   {getAppointmentsForDay(day).map(appt => {
                     const { top, height } = getApptPosition(appt);
+                    const isDragging = draggingAppt?.id === appt.id;
                     return (
                       <AppointmentBlock
                         key={appt.id}
                         appointment={appt}
-                        topPx={top}
+                        topPx={isDragging ? dragGhostTop : top}
                         heightPx={height}
                         onClick={setSelectedAppt}
+                        onDragStart={handleDragStart}
                       />
                     );
                   })}
+
+                  {/* Drag ghost overlay */}
+                  {draggingAppt && dragDayIndex === dayIndex && (
+                    <div
+                      className="appt-block appt-block-default pointer-events-none opacity-40 border-2 border-dashed border-primary"
+                      style={{
+                        top: dragGhostTop,
+                        height: Math.max(dragGhostHeight - 4, 20),
+                        zIndex: 50,
+                      }}
+                    >
+                      <p className="text-[11px] font-semibold leading-tight truncate">
+                        {draggingAppt.clientName}
+                      </p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -278,7 +412,7 @@ export const CalendarPage: React.FC = () => {
                 <p className="text-sm text-text">{selectedAppt.notes}</p>
               </div>
             )}
-            {/* Actions: Cancel (manual), Complete (manual) */}
+            {/* Actions */}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-divider">
               {selectedAppt.status !== 'Completed' && selectedAppt.status !== 'Cancelled' && (
                 <>
@@ -287,16 +421,18 @@ export const CalendarPage: React.FC = () => {
                     size="sm"
                     onClick={() => completeMutation.mutate(selectedAppt.id)}
                     disabled={completeMutation.isPending}
+                    loading={completeMutation.isPending}
                   >
-                    {completeMutation.isPending ? '...' : 'Završi'}
+                    Završi
                   </Button>
                   <Button
-                    variant="secondary"
+                    variant="danger"
                     size="sm"
                     onClick={() => cancelMutation.mutate(selectedAppt.id)}
                     disabled={cancelMutation.isPending}
+                    loading={cancelMutation.isPending}
                   >
-                    {cancelMutation.isPending ? '...' : 'Otkaži'}
+                    Otkaži
                   </Button>
                 </>
               )}
@@ -307,7 +443,8 @@ export const CalendarPage: React.FC = () => {
 
       <CreateAppointmentModal
         isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
+        onClose={handleCreateModalClose}
+        initialDate={createModalDate}
       />
     </div>
   );

@@ -246,6 +246,7 @@ input, textarea, select {
 
 .calendar-slot:hover {
   background: var(--color-surface-2);
+  cursor: pointer;
 }
 
 /* Half-hour dashed line */
@@ -292,6 +293,14 @@ input, textarea, select {
   filter: brightness(0.95);
   transform: scaleX(0.98);
   z-index: 10;
+}
+
+.appt-block {
+  cursor: grab;
+}
+
+.appt-block:active {
+  cursor: grabbing;
 }
 
 .appt-block-kosa   { background: var(--color-kosa-bg);   border-color: var(--color-kosa);   color: var(--color-kosa);   }
