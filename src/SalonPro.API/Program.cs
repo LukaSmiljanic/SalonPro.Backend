@@ -60,6 +60,7 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<CompletePastAppointmentsJob>();
+builder.Services.AddHostedService<AppointmentReminderJob>();
 
 // CORS
 builder.Services.AddCors(options =>

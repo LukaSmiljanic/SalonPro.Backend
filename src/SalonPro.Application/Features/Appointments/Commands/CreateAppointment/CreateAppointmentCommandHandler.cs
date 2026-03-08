@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SalonPro.Application.Common.Exceptions;
+using SalonPro.Application.Common.Interfaces;
 using SalonPro.Domain.Entities;
 using SalonPro.Domain.Enums;
 using SalonPro.Domain.Interfaces;
@@ -12,13 +14,19 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantService _currentTenantService;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<CreateAppointmentCommandHandler> _logger;
 
     public CreateAppointmentCommandHandler(
         IUnitOfWork unitOfWork,
-        ICurrentTenantService currentTenantService)
+        ICurrentTenantService currentTenantService,
+        IEmailService emailService,
+        ILogger<CreateAppointmentCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _currentTenantService = currentTenantService;
+        _emailService = emailService;
+        _logger = logger;
     }
 
     public async Task<Guid> Handle(CreateAppointmentCommand request, CancellationToken cancellationToken)
@@ -74,6 +82,38 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        // Send confirmation email (fire-and-forget, don't block the response)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(client.Email)) return;
+
+                var tenant = await _unitOfWork.Tenants.GetByIdAsync(tenantId, CancellationToken.None);
+                if (tenant == null) return;
+
+                var emailDto = new AppointmentEmailDto(
+                    ClientName: client.FullName,
+                    ClientEmail: client.Email,
+                    SalonName: tenant.Name,
+                    StaffName: staffMember.FullName,
+                    StartTime: appointment.StartTime,
+                    DurationMinutes: appointment.TotalDurationMinutes,
+                    ServiceNames: string.Join(", ", services.Select(s => s.Name)),
+                    TotalPrice: appointment.TotalPrice,
+                    Currency: tenant.Currency ?? "RSD",
+                    SalonPhone: tenant.Phone,
+                    SalonAddress: tenant.Address
+                );
+
+                await _emailService.SendAppointmentConfirmationAsync(emailDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send appointment confirmation email for appointment {AppointmentId}", appointment.Id);
+            }
+        }, cancellationToken);
 
         return appointment.Id;
     }

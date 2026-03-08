@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using SalonPro.Domain.Common;
 
 namespace SalonPro.Domain.Entities;
@@ -16,6 +17,21 @@ public class Tenant : BaseAuditableEntity
     public string? TimeZone { get; set; }
     public string? Currency { get; set; } = "EUR";
     public string? Language { get; set; } = "en";
+
+    // Email verification
+    public bool EmailVerified { get; set; } = false;
+    public string? EmailVerificationToken { get; set; }
+    public DateTime? EmailVerificationTokenExpiry { get; set; }
+
+    // Subscription
+    public DateTime? SubscriptionStartDate { get; set; }
+    public DateTime? SubscriptionEndDate { get; set; }
+    public bool IsTrialing { get; set; } = false;
+
+    /// <summary>True if subscription (or trial) is currently valid.</summary>
+    [NotMapped]
+    public bool HasActiveSubscription =>
+        SubscriptionEndDate.HasValue && SubscriptionEndDate.Value > DateTime.UtcNow;
 
     // Navigation
     public ICollection<User> Users { get; set; } = new List<User>();

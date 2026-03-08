@@ -35,7 +35,17 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
             .FirstOrDefaultAsync(cancellationToken);
 
         if (user == null || !_passwordService.VerifyPassword(request.Password, user.PasswordHash))
-            throw new UnauthorizedException("Invalid email or password.");
+            throw new UnauthorizedException("Pogrešan email ili lozinka.");
+
+        var tenant = user.Tenant;
+
+        // Block login if email is not verified
+        if (tenant != null && !tenant.EmailVerified)
+            throw new UnauthorizedException("Email adresa nije verifikovana. Proverite inbox za aktivacioni link.");
+
+        // Block login if subscription has expired
+        if (tenant != null && !tenant.HasActiveSubscription)
+            throw new UnauthorizedException("Vaša pretplata je istekla. Kontaktirajte podršku za produženje.");
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
         var refreshToken = _jwtTokenService.GenerateRefreshToken();
@@ -45,7 +55,19 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
         _unitOfWork.Users.Update(user);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var response = new AuthResponseDto
+        // Determine subscription status
+        string? subscriptionStatus = null;
+        if (tenant != null)
+        {
+            if (tenant.IsTrialing && tenant.HasActiveSubscription)
+                subscriptionStatus = "Trial";
+            else if (tenant.HasActiveSubscription)
+                subscriptionStatus = "Active";
+            else
+                subscriptionStatus = "Expired";
+        }
+
+        return new AuthResponseDto
         {
             AccessToken = accessToken,
             RefreshToken = refreshToken,
@@ -57,10 +79,10 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
                 Name = $"{user.FirstName} {user.LastName}".Trim(),
                 Role = user.Role.ToString(),
                 TenantId = user.TenantId.ToString(),
-                TenantName = user.Tenant?.Name ?? string.Empty
-            }
+                TenantName = tenant?.Name ?? string.Empty
+            },
+            SubscriptionStatus = subscriptionStatus,
+            SubscriptionEndDate = tenant?.SubscriptionEndDate
         };
-
-        return response;
     }
 }

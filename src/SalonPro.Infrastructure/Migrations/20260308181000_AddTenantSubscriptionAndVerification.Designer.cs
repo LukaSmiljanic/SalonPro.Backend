@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SalonPro.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using SalonPro.Infrastructure.Persistence;
 namespace SalonPro.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308181000_AddTenantSubscriptionAndVerification")]
+    partial class AddTenantSubscriptionAndVerification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -51,9 +54,9 @@ namespace SalonPro.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+
                     b.Property<DateTime?>("ReminderSentAt")
                         .HasColumnType("datetime2");
-
                     b.Property<Guid>("StaffMemberId")
                         .HasColumnType("uniqueidentifier");
 
@@ -503,6 +506,7 @@ namespace SalonPro.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+
                     b.Property<bool>("EmailVerified")
                         .HasColumnType("bit");
 
@@ -512,7 +516,6 @@ namespace SalonPro.Infrastructure.Migrations
 
                     b.Property<DateTime?>("EmailVerificationTokenExpiry")
                         .HasColumnType("datetime2");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 

@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
 using MediatR;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Application.Common.Interfaces;
 using SalonPro.Application.Features.Auth.DTOs;
@@ -14,17 +17,26 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
     private readonly IPasswordService _passwordService;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IDateTimeService _dateTimeService;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<RegisterCommandHandler> _logger;
 
     public RegisterCommandHandler(
         IUnitOfWork unitOfWork,
         IPasswordService passwordService,
         IJwtTokenService jwtTokenService,
-        IDateTimeService dateTimeService)
+        IDateTimeService dateTimeService,
+        IEmailService emailService,
+        IConfiguration configuration,
+        ILogger<RegisterCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _passwordService = passwordService;
         _jwtTokenService = jwtTokenService;
         _dateTimeService = dateTimeService;
+        _emailService = emailService;
+        _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<AuthResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -43,13 +55,25 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
         if (existingTenant != null)
             throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("TenantSlug", "Tenant slug is already taken.") });
 
-        // Create tenant
+        // Generate email verification token
+        var verificationToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+
+        // Create tenant with verification + trial subscription
+        var now = _dateTimeService.UtcNow;
         var tenant = new Tenant
         {
             Name = request.TenantName,
             Slug = request.TenantSlug.ToLower(),
+            Email = request.Email.ToLower(),
             IsActive = true,
-            CreatedAt = _dateTimeService.UtcNow
+            EmailVerified = false,
+            EmailVerificationToken = verificationToken,
+            EmailVerificationTokenExpiry = now.AddHours(48),
+            IsTrialing = true,
+            SubscriptionStartDate = now,
+            SubscriptionEndDate = now.AddDays(30),
+            CreatedAt = now
         };
 
         await _unitOfWork.Tenants.AddAsync(tenant, cancellationToken);
@@ -64,25 +88,33 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
             LastName = request.LastName,
             Role = UserRole.Admin,
             IsActive = true,
-            CreatedAt = _dateTimeService.UtcNow
+            CreatedAt = now
         };
 
         await _unitOfWork.Users.AddAsync(user, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        var accessToken = _jwtTokenService.GenerateAccessToken(user);
-        var refreshToken = _jwtTokenService.GenerateRefreshToken();
-
-        user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiry = _dateTimeService.UtcNow.AddDays(7);
-        _unitOfWork.Users.Update(user);
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        var response = new AuthResponseDto
+        // Send verification email (fire-and-forget)
+        _ = Task.Run(async () =>
         {
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60),
+            try
+            {
+                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "https://relaxed-ganache-48eccf.netlify.app";
+                var verificationUrl = $"{baseUrl}/verify-email?token={verificationToken}";
+                await _emailService.SendEmailVerificationAsync(request.Email, tenant.Name, verificationUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send verification email to {Email}", request.Email);
+            }
+        }, cancellationToken);
+
+        // Return response WITHOUT tokens — user must verify email first
+        return new AuthResponseDto
+        {
+            AccessToken = string.Empty,
+            RefreshToken = string.Empty,
+            ExpiresAt = now,
             User = new AuthUserDto
             {
                 Id = user.Id.ToString(),
@@ -91,9 +123,8 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
                 Role = user.Role.ToString(),
                 TenantId = tenant.Id.ToString(),
                 TenantName = tenant.Name
-            }
+            },
+            RequiresEmailVerification = true
         };
-
-        return response;
     }
 }

@@ -10,7 +10,7 @@ public static class DatabaseSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext context, IPasswordService passwordService)
     {
-        await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
 
         if (await context.Tenants.AnyAsync())
             return;
@@ -30,6 +30,10 @@ public static class DatabaseSeeder
             TimeZone = "Europe/Belgrade",
             Currency = "RSD",
             Language = "sr",
+            EmailVerified = true,
+            IsTrialing = false,
+            SubscriptionStartDate = DateTime.UtcNow,
+            SubscriptionEndDate = DateTime.UtcNow.AddYears(10),
             CreatedAt = DateTime.UtcNow
         };
         context.Tenants.Add(tenant);

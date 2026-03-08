@@ -15,6 +15,7 @@ public class Appointment : BaseAuditableEntity, ITenantEntity
     public string? CancellationReason { get; set; }
     public decimal TotalPrice { get; set; }
     public int TotalDurationMinutes { get; set; }
+    public DateTime? ReminderSentAt { get; set; }
 
     // Navigation
     public Tenant Tenant { get; set; } = null!;

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SalonPro.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using SalonPro.Infrastructure.Persistence;
 namespace SalonPro.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260308180000_AddAppointmentReminderSentAt")]
+    partial class AddAppointmentReminderSentAt
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -51,9 +54,9 @@ namespace SalonPro.Infrastructure.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+
                     b.Property<DateTime?>("ReminderSentAt")
                         .HasColumnType("datetime2");
-
                     b.Property<Guid>("StaffMemberId")
                         .HasColumnType("uniqueidentifier");
 
@@ -503,27 +506,8 @@ namespace SalonPro.Infrastructure.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
-                    b.Property<bool>("EmailVerified")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("EmailVerificationToken")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("EmailVerificationTokenExpiry")
-                        .HasColumnType("datetime2");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
-
-                    b.Property<bool>("IsTrialing")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTime?>("SubscriptionStartDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("SubscriptionEndDate")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("Language")
                         .HasMaxLength(10)

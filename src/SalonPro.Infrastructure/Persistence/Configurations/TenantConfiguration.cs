@@ -21,6 +21,8 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.TimeZone).HasMaxLength(100);
         builder.Property(t => t.Currency).HasMaxLength(10);
         builder.Property(t => t.Language).HasMaxLength(10);
+        builder.Property(t => t.EmailVerificationToken).HasMaxLength(256);
+        builder.Ignore(t => t.HasActiveSubscription);
         builder.Property(t => t.CreatedAt).IsRequired();
 
         builder.HasMany(t => t.Users)
