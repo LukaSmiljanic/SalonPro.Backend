@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using SalonPro.Application.Common.Interfaces;
 using SalonPro.Domain.Interfaces;
+using SalonPro.Infrastructure.Email;
 using SalonPro.Infrastructure.Persistence;
 using SalonPro.Infrastructure.Persistence.Interceptors;
 using SalonPro.Infrastructure.Services;
@@ -43,6 +44,10 @@ public static class DependencyInjection
         services.AddScoped<IDateTimeService, DateTimeService>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IPasswordService, PasswordService>();
+
+        // ── Email ────────────────────────────────────────────────────
+        services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
+        services.AddScoped<IEmailService, MailKitEmailService>();
 
         // ── Repository / UnitOfWork ──────────────────────────────────
         services.AddScoped<IUnitOfWork, UnitOfWork>();

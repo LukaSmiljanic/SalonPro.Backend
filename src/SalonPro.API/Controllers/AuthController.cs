@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using SalonPro.Application.Features.Auth.Commands.Login;
 using SalonPro.Application.Features.Auth.Commands.RefreshToken;
 using SalonPro.Application.Features.Auth.Commands.Register;
+using SalonPro.Application.Features.Auth.Commands.VerifyEmail;
 
 namespace SalonPro.API.Controllers;
 
@@ -24,6 +25,17 @@ public class AuthController : ApiControllerBase
     {
         var result = await Mediator.Send(command);
         return Ok(result);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+    {
+        var result = await Mediator.Send(new VerifyEmailCommand(token));
+        if (result.Success)
+            return Ok(new { message = result.Message });
+
+        return BadRequest(new { message = result.Message });
     }
 
     [AllowAnonymous]
