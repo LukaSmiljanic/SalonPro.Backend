@@ -1,6 +1,6 @@
 import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || '/api';
 
 const TOKEN_KEY = 'salonpro_token';
 const REFRESH_TOKEN_KEY = 'salonpro_refresh_token';
