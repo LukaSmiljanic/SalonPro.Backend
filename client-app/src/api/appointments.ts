@@ -126,3 +126,34 @@ export const cancelAppointment = async (id: string, cancellationReason?: string)
 export const completeAppointment = async (id: string): Promise<void> => {
   await apiClient.patch(`/appointments/${id}/complete`);
 };
+
+/** Reschedule an appointment to a new start time via PUT /appointments/{id} */
+export const rescheduleAppointment = async (
+  id: string,
+  newStartTime: string,
+  currentAppointment: {
+    clientId: string;
+    staffId: string;
+    serviceId: string;
+    notes?: string;
+    status: string;
+  }
+): Promise<void> => {
+  const statusMap: Record<string, string> = {
+    Pending: 'Pending',
+    Confirmed: 'Scheduled',
+    InProgress: 'InProgress',
+    Completed: 'Completed',
+    Cancelled: 'Cancelled',
+    NoShow: 'NoShow',
+  };
+  await apiClient.put(`/appointments/${id}`, {
+    id,
+    clientId: currentAppointment.clientId,
+    staffMemberId: currentAppointment.staffId,
+    startTime: newStartTime,
+    serviceIds: [currentAppointment.serviceId],
+    notes: currentAppointment.notes ?? null,
+    status: statusMap[currentAppointment.status] ?? 'Scheduled',
+  });
+};
