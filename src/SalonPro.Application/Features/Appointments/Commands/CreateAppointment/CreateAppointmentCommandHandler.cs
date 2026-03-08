@@ -15,17 +15,20 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantService _currentTenantService;
     private readonly IEmailService _emailService;
+    private readonly ISmsService _smsService;
     private readonly ILogger<CreateAppointmentCommandHandler> _logger;
 
     public CreateAppointmentCommandHandler(
         IUnitOfWork unitOfWork,
         ICurrentTenantService currentTenantService,
         IEmailService emailService,
+        ISmsService smsService,
         ILogger<CreateAppointmentCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _currentTenantService = currentTenantService;
         _emailService = emailService;
+        _smsService = smsService;
         _logger = logger;
     }
 
@@ -83,35 +86,61 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-        // Send confirmation email (fire-and-forget, don't block the response)
+        // Send confirmation notifications (fire-and-forget, don't block the response)
         _ = Task.Run(async () =>
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(client.Email)) return;
+                // Skip if client has neither email nor phone
+                if (string.IsNullOrWhiteSpace(client.Email) && string.IsNullOrWhiteSpace(client.Phone)) return;
 
                 var tenant = await _unitOfWork.Tenants.GetByIdAsync(tenantId, CancellationToken.None);
                 if (tenant == null) return;
 
-                var emailDto = new AppointmentEmailDto(
-                    ClientName: client.FullName,
-                    ClientEmail: client.Email,
-                    SalonName: tenant.Name,
-                    StaffName: staffMember.FullName,
-                    StartTime: appointment.StartTime,
-                    DurationMinutes: appointment.TotalDurationMinutes,
-                    ServiceNames: string.Join(", ", services.Select(s => s.Name)),
-                    TotalPrice: appointment.TotalPrice,
-                    Currency: tenant.Currency ?? "RSD",
-                    SalonPhone: tenant.Phone,
-                    SalonAddress: tenant.Address
-                );
+                var serviceNamesList = string.Join(", ", services.Select(s => s.Name));
 
-                await _emailService.SendAppointmentConfirmationAsync(emailDto);
+                // Send email if client has email
+                if (!string.IsNullOrWhiteSpace(client.Email))
+                {
+                    var emailDto = new AppointmentEmailDto(
+                        ClientName: client.FullName,
+                        ClientEmail: client.Email,
+                        SalonName: tenant.Name,
+                        StaffName: staffMember.FullName,
+                        StartTime: appointment.StartTime,
+                        DurationMinutes: appointment.TotalDurationMinutes,
+                        ServiceNames: serviceNamesList,
+                        TotalPrice: appointment.TotalPrice,
+                        Currency: tenant.Currency ?? "RSD",
+                        SalonPhone: tenant.Phone,
+                        SalonAddress: tenant.Address
+                    );
+
+                    await _emailService.SendAppointmentConfirmationAsync(emailDto);
+                }
+
+                // Send SMS confirmation if client has a phone number
+                if (!string.IsNullOrWhiteSpace(client.Phone))
+                {
+                    var smsDto = new AppointmentSmsDto(
+                        ClientName: client.FullName,
+                        ClientPhone: client.Phone,
+                        SalonName: tenant.Name,
+                        StaffName: staffMember.FullName,
+                        StartTime: appointment.StartTime,
+                        DurationMinutes: appointment.TotalDurationMinutes,
+                        ServiceNames: serviceNamesList,
+                        TotalPrice: appointment.TotalPrice,
+                        Currency: tenant.Currency ?? "RSD",
+                        SalonPhone: tenant.Phone
+                    );
+
+                    await _smsService.SendAppointmentConfirmationAsync(smsDto);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send appointment confirmation email for appointment {AppointmentId}", appointment.Id);
+                _logger.LogError(ex, "Failed to send appointment confirmation for appointment {AppointmentId}", appointment.Id);
             }
         }, cancellationToken);
 

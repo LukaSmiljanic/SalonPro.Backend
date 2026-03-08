@@ -10,6 +10,7 @@ using SalonPro.Infrastructure.Email;
 using SalonPro.Infrastructure.Persistence;
 using SalonPro.Infrastructure.Persistence.Interceptors;
 using SalonPro.Infrastructure.Services;
+using SalonPro.Infrastructure.Sms;
 
 namespace SalonPro.Infrastructure;
 
@@ -48,6 +49,11 @@ public static class DependencyInjection
         // ── Email ────────────────────────────────────────────────────
         services.Configure<SmtpSettings>(configuration.GetSection(SmtpSettings.SectionName));
         services.AddScoped<IEmailService, MailKitEmailService>();
+
+        // ── SMS (Infobip) ─────────────────────────────────────────────
+        services.Configure<SmsSettings>(configuration.GetSection(SmsSettings.SectionName));
+        services.AddHttpClient("Infobip");
+        services.AddScoped<ISmsService, InfobipSmsService>();
 
         // ── Repository / UnitOfWork ──────────────────────────────────
         services.AddScoped<IUnitOfWork, UnitOfWork>();

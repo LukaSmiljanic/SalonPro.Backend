@@ -13,15 +13,18 @@ public class CancelAppointmentCommandHandler : IRequestHandler<CancelAppointment
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEmailService _emailService;
+    private readonly ISmsService _smsService;
     private readonly ILogger<CancelAppointmentCommandHandler> _logger;
 
     public CancelAppointmentCommandHandler(
         IUnitOfWork unitOfWork,
         IEmailService emailService,
+        ISmsService smsService,
         ILogger<CancelAppointmentCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
         _emailService = emailService;
+        _smsService = smsService;
         _logger = logger;
     }
 
@@ -47,9 +50,12 @@ public class CancelAppointmentCommandHandler : IRequestHandler<CancelAppointment
         {
             try
             {
-                // Load related entities for email
+                // Load related entities for notifications
                 var client = await _unitOfWork.Clients.GetByIdAsync(appointment.ClientId, CancellationToken.None);
-                if (client == null || string.IsNullOrWhiteSpace(client.Email)) return;
+                if (client == null) return;
+
+                // Skip if client has neither email nor phone
+                if (string.IsNullOrWhiteSpace(client.Email) && string.IsNullOrWhiteSpace(client.Phone)) return;
 
                 var staffMember = await _unitOfWork.StaffMembers.GetByIdAsync(appointment.StaffMemberId, CancellationToken.None);
                 var tenant = await _unitOfWork.Tenants.GetByIdAsync(appointment.TenantId, CancellationToken.None);
@@ -62,25 +68,48 @@ public class CancelAppointmentCommandHandler : IRequestHandler<CancelAppointment
 
                 var serviceNames = string.Join(", ", services.Select(s => s.Service.Name));
 
-                var emailDto = new AppointmentEmailDto(
-                    ClientName: client.FullName,
-                    ClientEmail: client.Email,
-                    SalonName: tenant.Name,
-                    StaffName: staffMember.FullName,
-                    StartTime: appointment.StartTime,
-                    DurationMinutes: appointment.TotalDurationMinutes,
-                    ServiceNames: serviceNames,
-                    TotalPrice: appointment.TotalPrice,
-                    Currency: tenant.Currency ?? "RSD",
-                    SalonPhone: tenant.Phone,
-                    SalonAddress: tenant.Address
-                );
+                // Send email if client has email
+                if (!string.IsNullOrWhiteSpace(client.Email))
+                {
+                    var emailDto = new AppointmentEmailDto(
+                        ClientName: client.FullName,
+                        ClientEmail: client.Email,
+                        SalonName: tenant.Name,
+                        StaffName: staffMember.FullName,
+                        StartTime: appointment.StartTime,
+                        DurationMinutes: appointment.TotalDurationMinutes,
+                        ServiceNames: serviceNames,
+                        TotalPrice: appointment.TotalPrice,
+                        Currency: tenant.Currency ?? "RSD",
+                        SalonPhone: tenant.Phone,
+                        SalonAddress: tenant.Address
+                    );
 
-                await _emailService.SendAppointmentCancellationAsync(emailDto, request.CancellationReason);
+                    await _emailService.SendAppointmentCancellationAsync(emailDto, request.CancellationReason);
+                }
+
+                // Send cancellation SMS if client has a phone number
+                if (!string.IsNullOrWhiteSpace(client.Phone))
+                {
+                    var smsDto = new AppointmentSmsDto(
+                        ClientName: client.FullName,
+                        ClientPhone: client.Phone,
+                        SalonName: tenant.Name,
+                        StaffName: staffMember.FullName,
+                        StartTime: appointment.StartTime,
+                        DurationMinutes: appointment.TotalDurationMinutes,
+                        ServiceNames: serviceNames,
+                        TotalPrice: appointment.TotalPrice,
+                        Currency: tenant.Currency ?? "RSD",
+                        SalonPhone: tenant.Phone
+                    );
+
+                    await _smsService.SendAppointmentCancellationAsync(smsDto, request.CancellationReason);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send cancellation email for appointment {AppointmentId}", appointment.Id);
+                _logger.LogError(ex, "Failed to send cancellation notifications for appointment {AppointmentId}", appointment.Id);
             }
         }, cancellationToken);
 

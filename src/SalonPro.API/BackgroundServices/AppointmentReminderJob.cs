@@ -6,7 +6,7 @@ using SalonPro.Infrastructure.Persistence;
 namespace SalonPro.API.BackgroundServices;
 
 /// <summary>
-/// Sends reminder emails 24 hours before scheduled appointments.
+/// Sends reminder emails and SMS 24 hours before scheduled appointments.
 /// Runs every hour and picks up appointments starting in the next 23–25 hour window.
 /// </summary>
 public class AppointmentReminderJob : BackgroundService
@@ -56,12 +56,14 @@ public class AppointmentReminderJob : BackgroundService
         using var scope = _scopeFactory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
+        var smsService = scope.ServiceProvider.GetRequiredService<ISmsService>();
 
         var now = DateTime.UtcNow;
         var windowStart = now.AddHours(23);
         var windowEnd = now.AddHours(25);
 
         // Find all scheduled appointments in the 24h window that haven't been reminded yet
+        // Include appointments where client has email OR phone
         var appointments = await context.Appointments
             .AsNoTracking()
             .Include(a => a.Client)
@@ -73,7 +75,7 @@ public class AppointmentReminderJob : BackgroundService
                 a.StartTime >= windowStart &&
                 a.StartTime <= windowEnd &&
                 (a.Status == AppointmentStatus.Scheduled || a.Status == AppointmentStatus.Confirmed) &&
-                !string.IsNullOrEmpty(a.Client.Email) &&
+                (!string.IsNullOrEmpty(a.Client.Email) || !string.IsNullOrEmpty(a.Client.Phone)) &&
                 !a.ReminderSentAt.HasValue)
             .ToListAsync(cancellationToken);
 
@@ -88,21 +90,44 @@ public class AppointmentReminderJob : BackgroundService
             {
                 var serviceNames = string.Join(", ", appointment.AppointmentServices.Select(s => s.Service.Name));
 
-                var emailDto = new AppointmentEmailDto(
-                    ClientName: appointment.Client.FullName,
-                    ClientEmail: appointment.Client.Email!,
-                    SalonName: appointment.Tenant.Name,
-                    StaffName: appointment.StaffMember.FullName,
-                    StartTime: appointment.StartTime,
-                    DurationMinutes: appointment.TotalDurationMinutes,
-                    ServiceNames: serviceNames,
-                    TotalPrice: appointment.TotalPrice,
-                    Currency: appointment.Tenant.Currency ?? "RSD",
-                    SalonPhone: appointment.Tenant.Phone,
-                    SalonAddress: appointment.Tenant.Address
-                );
+                // Send email reminder if client has email
+                if (!string.IsNullOrWhiteSpace(appointment.Client.Email))
+                {
+                    var emailDto = new AppointmentEmailDto(
+                        ClientName: appointment.Client.FullName,
+                        ClientEmail: appointment.Client.Email,
+                        SalonName: appointment.Tenant.Name,
+                        StaffName: appointment.StaffMember.FullName,
+                        StartTime: appointment.StartTime,
+                        DurationMinutes: appointment.TotalDurationMinutes,
+                        ServiceNames: serviceNames,
+                        TotalPrice: appointment.TotalPrice,
+                        Currency: appointment.Tenant.Currency ?? "RSD",
+                        SalonPhone: appointment.Tenant.Phone,
+                        SalonAddress: appointment.Tenant.Address
+                    );
 
-                await emailService.SendAppointmentReminderAsync(emailDto, cancellationToken);
+                    await emailService.SendAppointmentReminderAsync(emailDto, cancellationToken);
+                }
+
+                // Send SMS reminder if client has a phone number
+                if (!string.IsNullOrWhiteSpace(appointment.Client.Phone))
+                {
+                    var smsDto = new AppointmentSmsDto(
+                        ClientName: appointment.Client.FullName,
+                        ClientPhone: appointment.Client.Phone,
+                        SalonName: appointment.Tenant.Name,
+                        StaffName: appointment.StaffMember.FullName,
+                        StartTime: appointment.StartTime,
+                        DurationMinutes: appointment.TotalDurationMinutes,
+                        ServiceNames: serviceNames,
+                        TotalPrice: appointment.TotalPrice,
+                        Currency: appointment.Tenant.Currency ?? "RSD",
+                        SalonPhone: appointment.Tenant.Phone
+                    );
+
+                    await smsService.SendAppointmentReminderAsync(smsDto, cancellationToken);
+                }
 
                 // Mark as reminded so we don't send again
                 var tracked = await context.Appointments.FindAsync(new object[] { appointment.Id }, cancellationToken);
@@ -113,8 +138,8 @@ public class AppointmentReminderJob : BackgroundService
                 }
 
                 _logger.LogInformation(
-                    "Reminder sent for appointment {AppointmentId} to {Email}.",
-                    appointment.Id, appointment.Client.Email);
+                    "Reminder sent for appointment {AppointmentId} to {Email}/{Phone}.",
+                    appointment.Id, appointment.Client.Email, appointment.Client.Phone);
             }
             catch (Exception ex)
             {
