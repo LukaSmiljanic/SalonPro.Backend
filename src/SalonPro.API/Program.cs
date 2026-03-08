@@ -75,13 +75,18 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ── Middleware pipeline ───────────────────────────────────────────────────
-if (app.Environment.IsDevelopment())
+//if (app.Environment.IsDevelopment())
+//{
+app.UseSwagger();
+app.UseSwaggerUI();
+//}
+
+if (!app.Environment.IsProduction())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 app.UseCors();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthentication();
@@ -92,9 +97,18 @@ app.MapControllers();
 // ── Seed database ─────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
-    await DatabaseSeeder.SeedAsync(context, passwordService);
+    try
+    {
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
+        await context.Database.EnsureCreatedAsync();
+        await DatabaseSeeder.SeedAsync(context, passwordService);
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Error during database migration/seed");
+    }
 }
 
 app.Run();
