@@ -19,6 +19,7 @@ interface ClientListDtoItem {
   favoriteService?: string | null;
   isVip: boolean;
   tags?: string | null;
+  totalVisits: number;
 }
 
 /** Backend GET /clients/:id response (ClientDetailDto) */
@@ -58,7 +59,7 @@ function mapListDtoToClient(item: ClientListDtoItem): Client {
     email: item.email ?? undefined,
     phone: item.phone,
     notes: undefined,
-    totalVisits: 0,
+    totalVisits: item.totalVisits ?? 0,
     totalSpent: 0,
     lastVisit: item.lastVisitDate ?? undefined,
     createdAt: '',

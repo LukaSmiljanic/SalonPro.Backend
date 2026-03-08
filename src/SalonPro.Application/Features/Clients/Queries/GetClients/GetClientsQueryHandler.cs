@@ -53,7 +53,8 @@ public class GetClientsQueryHandler : IRequestHandler<GetClientsQuery, Paginated
                 .Select(g => g.Key)
                 .FirstOrDefault(),
             c.IsVip,
-            c.Tags
+            c.Tags,
+            c.Appointments.Count(a => a.Status == AppointmentStatus.Completed)
         ));
 
         return await PaginatedList<ClientListDto>.CreateAsync(

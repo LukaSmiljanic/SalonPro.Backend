@@ -8,5 +8,6 @@ public record ClientListDto(
     DateTime? LastVisitDate,
     string? FavoriteService,
     bool IsVip,
-    string? Tags
+    string? Tags,
+    int TotalVisits
 );
