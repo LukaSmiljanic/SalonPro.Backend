@@ -14,6 +14,22 @@ interface AppointmentByDateItem {
   services?: Array<{ serviceId: string; serviceName: string; price: number; durationMinutes: number }>;
 }
 
+/** Response shape from GET /appointments/{id} (detail, includes clientId/staffMemberId) */
+interface AppointmentDetailItem {
+  id: string;
+  clientId: string;
+  clientName: string;
+  staffMemberId: string;
+  staffMemberName: string;
+  startTime: string;
+  endTime: string;
+  status: string;
+  totalPrice: number;
+  notes?: string | null;
+  cancellationReason?: string | null;
+  services?: Array<{ serviceId: string; serviceName: string; price: number; durationMinutes: number }>;
+}
+
 function mapAppointmentFromApi(item: AppointmentByDateItem): Appointment {
   const services = item.services ?? [];
   const firstService = services[0];
@@ -127,33 +143,32 @@ export const completeAppointment = async (id: string): Promise<void> => {
   await apiClient.patch(`/appointments/${id}/complete`);
 };
 
-/** Reschedule an appointment to a new start time via PUT /appointments/{id} */
+/** Fetch full appointment detail (includes clientId, staffMemberId) */
+export const getAppointmentDetail = async (id: string): Promise<AppointmentDetailItem> => {
+  const response = await apiClient.get<AppointmentDetailItem>(`/appointments/${id}`);
+  return response.data;
+};
+
+/** Reschedule an appointment to a new start time.
+ *  First fetches full detail to get clientId/staffMemberId,
+ *  then calls PUT /appointments/{id}.
+ */
 export const rescheduleAppointment = async (
   id: string,
   newStartTime: string,
-  currentAppointment: {
-    clientId: string;
-    staffId: string;
-    serviceId: string;
-    notes?: string;
-    status: string;
-  }
 ): Promise<void> => {
-  const statusMap: Record<string, string> = {
-    Pending: 'Pending',
-    Confirmed: 'Scheduled',
-    InProgress: 'InProgress',
-    Completed: 'Completed',
-    Cancelled: 'Cancelled',
-    NoShow: 'NoShow',
-  };
+  // Fetch full detail to get the IDs we need
+  const detail = await getAppointmentDetail(id);
+
+  const serviceIds = detail.services?.map(s => s.serviceId) ?? [];
+
   await apiClient.put(`/appointments/${id}`, {
     id,
-    clientId: currentAppointment.clientId,
-    staffMemberId: currentAppointment.staffId,
+    clientId: detail.clientId,
+    staffMemberId: detail.staffMemberId,
     startTime: newStartTime,
-    serviceIds: [currentAppointment.serviceId],
-    notes: currentAppointment.notes ?? null,
-    status: statusMap[currentAppointment.status] ?? 'Scheduled',
+    serviceIds: serviceIds.length > 0 ? serviceIds : [],
+    notes: detail.notes ?? null,
+    status: detail.status,
   });
 };

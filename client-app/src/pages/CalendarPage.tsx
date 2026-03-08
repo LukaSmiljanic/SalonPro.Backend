@@ -7,7 +7,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Filter } from 'lucide-react';
 import { getAppointments, cancelAppointment, completeAppointment, rescheduleAppointment } from '../api/appointments';
 import { getStaff } from '../api/staff';
-import type { Appointment, StaffMember } from '../types';
+import type { Appointment } from '../types';
 import { queryKeys } from '../lib/queryKeys';
 import { AppointmentBlock } from '../components/AppointmentBlock';
 import { Badge } from '../components/Badge';
@@ -20,6 +20,20 @@ const HOUR_HEIGHT = 60;
 const DAY_START = 8;
 const DAY_END   = 22;
 const HOURS = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
+const SNAP_MINUTES = 15;
+const SNAP_PX = HOUR_HEIGHT * (SNAP_MINUTES / 60); // 15px per 15 min
+
+function snapToGrid(px: number): number {
+  return Math.round(px / SNAP_PX) * SNAP_PX;
+}
+
+function pxToTime(px: number): { hours: number; minutes: number } {
+  const totalMinutes = DAY_START * 60 + (px / HOUR_HEIGHT) * 60;
+  return {
+    hours: Math.floor(totalMinutes / 60),
+    minutes: Math.round(totalMinutes % 60),
+  };
+}
 
 export const CalendarPage: React.FC = () => {
   const queryClient = useQueryClient();
@@ -31,14 +45,19 @@ export const CalendarPage: React.FC = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalDate, setCreateModalDate] = useState<Date | undefined>(undefined);
 
-  // Drag-and-drop state
-  const [draggingAppt, setDraggingAppt] = useState<Appointment | null>(null);
-  const [dragGhostTop, setDragGhostTop] = useState<number>(0);
-  const [dragGhostHeight, setDragGhostHeight] = useState<number>(0);
-  const [dragDayIndex, setDragDayIndex] = useState<number>(-1);
+  // ── Drag state ─────────────────────────────────────────────
+  // Use a single state object + refs so mouse handlers never read stale values.
+  const [dragState, setDragState] = useState<{
+    appt: Appointment;
+    dayIndex: number;
+    ghostTop: number;
+    ghostHeight: number;
+  } | null>(null);
+
+  const dragGhostTopRef = useRef(0);
   const dragStartYRef = useRef(0);
   const dragOriginalTopRef = useRef(0);
-  const dragColRefMap = useRef<Map<number, HTMLDivElement>>(new Map());
+  const dragApptRef = useRef<Appointment | null>(null);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -81,14 +100,8 @@ export const CalendarPage: React.FC = () => {
   });
 
   const rescheduleMutation = useMutation({
-    mutationFn: ({ appt, newStartTime }: { appt: Appointment; newStartTime: string }) =>
-      rescheduleAppointment(appt.id, newStartTime, {
-        clientId: appt.clientId,
-        staffId: appt.staffId,
-        serviceId: appt.serviceId,
-        notes: appt.notes,
-        status: appt.status,
-      }),
+    mutationFn: ({ id, newStartTime }: { id: string; newStartTime: string }) =>
+      rescheduleAppointment(id, newStartTime),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
     },
@@ -109,7 +122,7 @@ export const CalendarPage: React.FC = () => {
     });
   }, [appointments]);
 
-  const getApptPosition = (appt: Appointment): { top: number; height: number } => {
+  const getApptPosition = useCallback((appt: Appointment): { top: number; height: number } => {
     try {
       const start = parseISO(appt.startTime);
       const end = parseISO(appt.endTime);
@@ -124,9 +137,9 @@ export const CalendarPage: React.FC = () => {
     } catch {
       return { top: 0, height: HOUR_HEIGHT };
     }
-  };
+  }, []);
 
-  // --- Double-click on empty slot → open create modal ---
+  // ── Double-click on empty slot ─────────────────────────────
   const handleSlotDoubleClick = useCallback((day: Date, hour: number) => {
     const d = new Date(day);
     d.setHours(hour, 0, 0, 0);
@@ -134,64 +147,69 @@ export const CalendarPage: React.FC = () => {
     setCreateModalOpen(true);
   }, []);
 
-  // --- Drag-and-drop logic ---
+  // ── Drag start (called from AppointmentBlock) ──────────────
   const handleDragStart = useCallback((appt: Appointment, startY: number, originalTop: number) => {
     const pos = getApptPosition(appt);
-    setDraggingAppt(appt);
-    dragStartYRef.current = startY;
-    dragOriginalTopRef.current = originalTop;
-    setDragGhostTop(originalTop);
-    setDragGhostHeight(pos.height);
-    // Find which day column this appointment belongs to
     const apptDate = parseISO(appt.startTime);
     const dayIdx = weekDays.findIndex(d =>
       d.getFullYear() === apptDate.getFullYear() &&
       d.getMonth() === apptDate.getMonth() &&
       d.getDate() === apptDate.getDate()
     );
-    setDragDayIndex(dayIdx);
-  }, [weekDays]);
 
+    // Store everything in refs for the global handlers
+    dragStartYRef.current = startY;
+    dragOriginalTopRef.current = originalTop;
+    dragGhostTopRef.current = originalTop;
+    dragApptRef.current = appt;
+
+    setDragState({
+      appt,
+      dayIndex: dayIdx,
+      ghostTop: originalTop,
+      ghostHeight: pos.height,
+    });
+  }, [weekDays, getApptPosition]);
+
+  // ── Global mouse handlers (mounted only while dragging) ────
   useEffect(() => {
-    if (!draggingAppt) return;
+    if (!dragState) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaY = e.clientY - dragStartYRef.current;
-      const newTop = Math.max(0, dragOriginalTopRef.current + deltaY);
-      // Snap to 15-minute increments
-      const snapped = Math.round(newTop / (HOUR_HEIGHT / 4)) * (HOUR_HEIGHT / 4);
-      setDragGhostTop(snapped);
+      const raw = dragOriginalTopRef.current + deltaY;
+      const maxTop = (DAY_END - DAY_START) * HOUR_HEIGHT - dragState.ghostHeight;
+      const clamped = Math.max(0, Math.min(raw, maxTop));
+      const snapped = snapToGrid(clamped);
+      dragGhostTopRef.current = snapped;
+      setDragState(prev => prev ? { ...prev, ghostTop: snapped } : null);
     };
 
     const handleMouseUp = () => {
-      if (draggingAppt) {
-        // Calculate new time from ghost position
-        const minutesFromDayStart = (dragGhostTop / HOUR_HEIGHT) * 60;
-        const totalMinutes = DAY_START * 60 + minutesFromDayStart;
-        const newHours = Math.floor(totalMinutes / 60);
-        const newMinutes = Math.round(totalMinutes % 60);
+      const appt = dragApptRef.current;
+      const ghostTop = dragGhostTopRef.current;
 
-        // Build new start time using the appointment's original day
-        const apptDate = parseISO(draggingAppt.startTime);
+      if (appt) {
+        const { hours: newHours, minutes: newMinutes } = pxToTime(ghostTop);
+        const apptDate = parseISO(appt.startTime);
         const newStart = new Date(apptDate);
         newStart.setHours(newHours, newMinutes, 0, 0);
 
-        // Only reschedule if time actually changed
-        const origStart = parseISO(draggingAppt.startTime);
+        const origStart = parseISO(appt.startTime);
         if (newStart.getTime() !== origStart.getTime()) {
           rescheduleMutation.mutate({
-            appt: draggingAppt,
+            id: appt.id,
             newStartTime: newStart.toISOString(),
           });
         }
       }
-      setDraggingAppt(null);
-      setDragDayIndex(-1);
+
+      dragApptRef.current = null;
+      setDragState(null);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-    // Prevent text selection during drag
     document.body.style.userSelect = 'none';
     document.body.style.cursor = 'grabbing';
 
@@ -201,12 +219,22 @@ export const CalendarPage: React.FC = () => {
       document.body.style.userSelect = '';
       document.body.style.cursor = '';
     };
-  }, [draggingAppt, dragGhostTop, rescheduleMutation]);
+    // Only re-subscribe when drag starts/stops — NOT on every ghost move
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dragState?.appt?.id]);
 
   const handleCreateModalClose = useCallback(() => {
     setCreateModalOpen(false);
     setCreateModalDate(undefined);
   }, []);
+
+  // Helper to format the drag time hint
+  const dragTimeHint = dragState
+    ? (() => {
+        const { hours, minutes } = pxToTime(dragState.ghostTop);
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+      })()
+    : '';
 
   return (
     <div className="flex flex-col h-[calc(100vh-56px)]">
@@ -322,9 +350,6 @@ export const CalendarPage: React.FC = () => {
                 <div
                   key={day.toISOString()}
                   className="calendar-day-col border-l border-divider"
-                  ref={el => {
-                    if (el) dragColRefMap.current.set(dayIndex, el);
-                  }}
                 >
                   {/* Hour slots with double-click */}
                   {HOURS.map(hour => (
@@ -338,34 +363,52 @@ export const CalendarPage: React.FC = () => {
                   {/* Appointment blocks */}
                   {getAppointmentsForDay(day).map(appt => {
                     const { top, height } = getApptPosition(appt);
-                    const isDragging = draggingAppt?.id === appt.id;
+                    const isDragging = dragState?.appt.id === appt.id;
+
+                    if (isDragging) {
+                      // While dragging: show a semi-transparent original in place
+                      // and the ghost at the new position
+                      return (
+                        <React.Fragment key={appt.id}>
+                          {/* Original position — faded */}
+                          <div
+                            className="appt-block appt-block-default opacity-20 pointer-events-none"
+                            style={{ top, height: Math.max(height - 4, 20) }}
+                          >
+                            <p className="text-[11px] font-semibold leading-tight truncate">{appt.clientName}</p>
+                          </div>
+                          {/* Dragged ghost */}
+                          <div
+                            className="appt-block appt-block-default pointer-events-none border-2 border-primary shadow-lg"
+                            style={{
+                              top: dragState.ghostTop,
+                              height: Math.max(height - 4, 20),
+                              zIndex: 50,
+                              opacity: 0.9,
+                            }}
+                          >
+                            <p className="text-[11px] font-semibold leading-tight truncate">
+                              {appt.clientName}
+                            </p>
+                            <p className="text-[10px] font-medium text-primary leading-tight">
+                              {dragTimeHint}
+                            </p>
+                          </div>
+                        </React.Fragment>
+                      );
+                    }
+
                     return (
                       <AppointmentBlock
                         key={appt.id}
                         appointment={appt}
-                        topPx={isDragging ? dragGhostTop : top}
+                        topPx={top}
                         heightPx={height}
                         onClick={setSelectedAppt}
                         onDragStart={handleDragStart}
                       />
                     );
                   })}
-
-                  {/* Drag ghost overlay */}
-                  {draggingAppt && dragDayIndex === dayIndex && (
-                    <div
-                      className="appt-block appt-block-default pointer-events-none opacity-40 border-2 border-dashed border-primary"
-                      style={{
-                        top: dragGhostTop,
-                        height: Math.max(dragGhostHeight - 4, 20),
-                        zIndex: 50,
-                      }}
-                    >
-                      <p className="text-[11px] font-semibold leading-tight truncate">
-                        {draggingAppt.clientName}
-                      </p>
-                    </div>
-                  )}
                 </div>
               ))}
             </div>
