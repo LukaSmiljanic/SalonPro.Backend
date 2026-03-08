@@ -50,7 +50,8 @@ public class SearchClientsQueryHandler : IRequestHandler<SearchClientsQuery, Lis
                 .Select(g => g.Key)
                 .FirstOrDefault(),
             c.IsVip,
-            c.Tags
+            c.Tags,
+            c.Appointments.Count(a => a.Status == AppointmentStatus.Completed)
         )).ToList();
     }
 }
