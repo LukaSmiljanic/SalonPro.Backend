@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { AuthUser } from '../types';
+import type { AuthUser, AuthResponse } from '../types';
 import { login as apiLogin, register as apiRegister } from '../api/auth';
 import type { LoginRequest, RegisterRequest } from '../types';
 import {
@@ -17,7 +17,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  register: (data: RegisterRequest) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<AuthResponse>;
   logout: () => void;
 }
 
@@ -62,12 +62,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(response.user);
   }, []);
 
-  const register = useCallback(async (data: RegisterRequest) => {
+  const register = useCallback(async (data: RegisterRequest): Promise<AuthResponse> => {
     const response = await apiRegister(data);
-    setStoredToken(response.accessToken);
-    setStoredRefreshToken(response.refreshToken);
-    setStoredTenantId(response.user.tenantId);
-    setUser(response.user);
+    // Don't store tokens or set user if email verification is required
+    if (!response.requiresEmailVerification && response.accessToken) {
+      setStoredToken(response.accessToken);
+      setStoredRefreshToken(response.refreshToken);
+      setStoredTenantId(response.user.tenantId);
+      setUser(response.user);
+    }
+    return response;
   }, []);
 
   const logout = useCallback(() => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Scissors, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Scissors, Eye, EyeOff, AlertCircle, MailCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -28,6 +28,8 @@ export const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState('');
 
   const [loginForm, setLoginForm] = useState<LoginForm>({
     email: '',
@@ -85,14 +87,19 @@ export const LoginPage: React.FC = () => {
     const lastName = nameParts.slice(1).join(' ') || firstName;
     setIsLoading(true);
     try {
-      await register({
+      const response = await register({
         email: registerForm.email.trim(),
         password: registerForm.password,
         tenantName: registerForm.tenantName.trim(),
         firstName: firstName || 'Owner',
         lastName: lastName || 'User',
       });
-      navigate('/dashboard', { replace: true });
+      if (response.requiresEmailVerification) {
+        setRegisteredEmail(registerForm.email.trim());
+        setRegistrationSuccess(true);
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { errors?: Record<string, string[]>; detail?: string } } })?.response?.data;
       const errs = data?.errors;
@@ -120,6 +127,36 @@ export const LoginPage: React.FC = () => {
 
         {/* Card */}
         <div className="card card-padded">
+
+          {/* Registration success — email verification message */}
+          {registrationSuccess ? (
+            <div className="flex flex-col items-center text-center py-4">
+              <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
+                <MailCheck size={28} className="text-success" />
+              </div>
+              <h2 className="text-lg font-semibold text-text mb-2">Proverite vaš email</h2>
+              <p className="text-sm text-text-muted mb-4">
+                Poslali smo link za verifikaciju na{' '}
+                <span className="font-medium text-text">{registeredEmail}</span>.
+                Kliknite na link u poruci da aktivirate nalog.
+              </p>
+              <div className="w-full p-3 bg-surface-2 rounded-lg text-xs text-text-muted space-y-1">
+                <p>Proverite i spam/promotions folder.</p>
+                <p>Link važi 48 sati.</p>
+              </div>
+              <button
+                onClick={() => {
+                  setRegistrationSuccess(false);
+                  setMode('login');
+                  setError(null);
+                }}
+                className="mt-5 text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+              >
+                Nazad na prijavu
+              </button>
+            </div>
+          ) : (
+          <>
 
           {/* Tab switcher */}
           <div className="flex rounded-lg bg-surface-2 p-0.5 mb-5">
@@ -236,6 +273,8 @@ export const LoginPage: React.FC = () => {
                 Kreiraj nalog
               </Button>
             </form>
+          )}
+          </>
           )}
         </div>
 

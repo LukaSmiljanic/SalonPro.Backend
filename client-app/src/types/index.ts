@@ -28,6 +28,7 @@ export interface AuthResponse {
   accessToken: string;
   refreshToken: string;
   user: AuthUser;
+  requiresEmailVerification?: boolean;
 }
 
 export interface RefreshTokenRequest {
