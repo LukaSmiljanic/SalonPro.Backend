@@ -9,6 +9,7 @@ import { CalendarPage } from './pages/CalendarPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { ServicesPage } from './pages/ServicesPage';
 import { StaffPage } from './pages/StaffPage';
+import { VerifyEmailPage } from './pages/VerifyEmailPage';
 
 const App: React.FC = () => {
   return (
@@ -30,6 +31,9 @@ const App: React.FC = () => {
               <Route path="/services" element={<ServicesPage />} />
             </Route>
           </Route>
+
+          {/* Public — no auth wrapper */}
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />
