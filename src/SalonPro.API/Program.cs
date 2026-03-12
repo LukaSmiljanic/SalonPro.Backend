@@ -102,7 +102,6 @@ using (var scope = app.Services.CreateScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
-        await context.Database.EnsureCreatedAsync();
         await DatabaseSeeder.SeedAsync(context, passwordService);
     }
     catch (Exception ex)

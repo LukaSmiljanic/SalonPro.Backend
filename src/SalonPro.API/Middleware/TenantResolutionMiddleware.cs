@@ -13,14 +13,8 @@ public class TenantResolutionMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<TenantResolutionMiddleware> _logger;
 
-    // Auth endpoints do not require a tenant ID
-    private static readonly HashSet<string> _tenantExemptPaths = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "/api/auth/login",
-        "/api/auth/register",
-        "/api/auth/verify-email",
-        "/api/auth/refresh-token"
-    };
+    // Auth controller prefix – all auth endpoints are exempt from tenant requirement
+    private const string AuthPrefix = "/api/auth/";
 
     public TenantResolutionMiddleware(RequestDelegate next, ILogger<TenantResolutionMiddleware> logger)
     {
@@ -68,7 +62,7 @@ public class TenantResolutionMiddleware
         }
 
         // Auth-exempt paths proceed without a tenant ID
-        if (_tenantExemptPaths.Contains(path))
+        if (path.StartsWith(AuthPrefix, StringComparison.OrdinalIgnoreCase))
         {
             await _next(context);
             return;
