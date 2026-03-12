@@ -17,7 +17,9 @@ public class TenantResolutionMiddleware
     private static readonly HashSet<string> _tenantExemptPaths = new(StringComparer.OrdinalIgnoreCase)
     {
         "/api/auth/login",
-        "/api/auth/register"
+        "/api/auth/register",
+        "/api/auth/verify-email",
+        "/api/auth/refresh-token"
     };
 
     public TenantResolutionMiddleware(RequestDelegate next, ILogger<TenantResolutionMiddleware> logger)
