@@ -85,9 +85,12 @@ public class MailKitEmailService : IEmailService
 
             using var client = new SmtpClient();
 
-            var secureSocketOptions = _settings.UseSsl
-                ? SecureSocketOptions.StartTls
-                : SecureSocketOptions.Auto;
+            // Port 465 = implicit SSL, Port 587 = STARTTLS
+            var secureSocketOptions = _settings.Port == 465
+                ? SecureSocketOptions.SslOnConnect
+                : _settings.UseSsl
+                    ? SecureSocketOptions.StartTls
+                    : SecureSocketOptions.Auto;
 
             await client.ConnectAsync(_settings.Host, _settings.Port, secureSocketOptions, cancellationToken);
             await client.AuthenticateAsync(_settings.Username, _settings.Password, cancellationToken);
