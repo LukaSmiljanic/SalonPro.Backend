@@ -103,7 +103,7 @@ export const LoginPage: React.FC = () => {
     } catch (err: unknown) {
       const data = (err as { response?: { data?: { errors?: Record<string, string[]>; detail?: string } } })?.response?.data;
       const errs = data?.errors;
-      const msg = (errs && (errs.email?.[0] ?? errs.Email?.[0] ?? errs.tenantSlug?.[0] ?? errs.TenantSlug?.[0])) ?? data?.detail ?? 'Registracija nije uspela. Pokušajte ponovo.';
+      const msg = (errs && (errs.email?.[0] ?? errs.Email?.[0] ?? errs.tenantSlug?.[0] ?? errs.TenantSlug?.[0])) ?? data?.detail ?? 'Registracija nije uspela. Poku\u0161ajte ponovo.';
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -128,13 +128,13 @@ export const LoginPage: React.FC = () => {
         {/* Card */}
         <div className="card card-padded">
 
-          {/* Registration success — email verification message */}
+          {/* Registration success \u2014 email verification message */}
           {registrationSuccess ? (
             <div className="flex flex-col items-center text-center py-4">
               <div className="w-14 h-14 rounded-full bg-success/10 flex items-center justify-center mb-4">
                 <MailCheck size={28} className="text-success" />
               </div>
-              <h2 className="text-lg font-semibold text-text mb-2">Proverite vaš email</h2>
+              <h2 className="text-lg font-semibold text-text mb-2">Proverite va\u0161 email</h2>
               <p className="text-sm text-text-muted mb-4">
                 Poslali smo link za verifikaciju na{' '}
                 <span className="font-medium text-text">{registeredEmail}</span>.
@@ -142,7 +142,7 @@ export const LoginPage: React.FC = () => {
               </p>
               <div className="w-full p-3 bg-surface-2 rounded-lg text-xs text-text-muted space-y-1">
                 <p>Proverite i spam/promotions folder.</p>
-                <p>Link važi 48 sati.</p>
+                <p>Link va\u017ei 48 sati.</p>
               </div>
               <button
                 onClick={() => {
@@ -194,7 +194,7 @@ export const LoginPage: React.FC = () => {
               <Input
                 label="Lozinka"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
                 value={loginForm.password}
                 onChange={e => setLoginForm(f => ({ ...f, password: e.target.value }))}
                 autoComplete="current-password"
@@ -209,12 +209,12 @@ export const LoginPage: React.FC = () => {
                 }
               />
               <Input
-                label="ID salona"
+                label="ID ili slug salona"
                 type="text"
-                placeholder="npr. 00000000-0000-0000-0000-000000000001"
+                placeholder="npr. demo-salon"
                 value={loginForm.tenantId}
                 onChange={e => setLoginForm(f => ({ ...f, tenantId: e.target.value }))}
-                hint="Potrebno samo ako imate više salona (isti email)"
+                hint="Potrebno samo ako imate vi\u0161e salona (isti email)"
               />
               <Button type="submit" loading={isLoading} className="mt-1 w-full">
                 Prijavi se
@@ -235,7 +235,7 @@ export const LoginPage: React.FC = () => {
               <Input
                 label="Ime vlasnika"
                 type="text"
-                placeholder="Jelena Petrović"
+                placeholder="Jelena Petrovi\u0107"
                 value={registerForm.ownerName}
                 onChange={e => setRegisterForm(f => ({ ...f, ownerName: e.target.value }))}
               />
@@ -249,7 +249,7 @@ export const LoginPage: React.FC = () => {
               <Input
                 label="Lozinka"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
                 value={registerForm.password}
                 onChange={e => setRegisterForm(f => ({ ...f, password: e.target.value }))}
                 rightIcon={
@@ -265,7 +265,7 @@ export const LoginPage: React.FC = () => {
               <Input
                 label="Potvrdi lozinku"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
+                placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"
                 value={registerForm.confirmPassword}
                 onChange={e => setRegisterForm(f => ({ ...f, confirmPassword: e.target.value }))}
               />

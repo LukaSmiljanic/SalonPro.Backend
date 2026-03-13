@@ -1,9 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   CalendarClock, UserX, TrendingUp, TrendingDown, AlertTriangle,
   Clock, Sparkles, CalendarPlus, UserCheck, type LucideIcon
 } from 'lucide-react';
-import type { Insight, InsightPriority } from '../types';
+import type { Insight, InsightPriority, InsightType } from '../types';
 
 const iconMap: Record<string, LucideIcon> = {
   CalendarClock,
@@ -36,9 +37,22 @@ interface InsightCardProps {
   compact?: boolean;
 }
 
+const insightRouteMap: Partial<Record<InsightType, string>> = {
+  ScheduleGap: '/calendar',
+  ClientReEngagement: '/clients',
+  NoShowRisk: '/clients',
+  ChurnRisk: '/clients',
+  PeakHours: '/calendar',
+  RebookingSuggestion: '/calendar',
+  ServiceUpsell: '/services',
+  ServiceHistory: '/services',
+};
+
 export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = false }) => {
+  const navigate = useNavigate();
   const IconComponent = iconMap[insight.icon] || Sparkles;
   const styles = priorityStyles[insight.priority];
+  const targetRoute = insightRouteMap[insight.type];
 
   if (compact) {
     return (
@@ -71,9 +85,12 @@ export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = fal
             </span>
           </div>
           <p className="text-xs text-text-muted leading-relaxed">{insight.description}</p>
-          {insight.actionLabel && (
-            <button className="mt-2 text-xs font-medium text-[#5B3A8C] hover:text-[#4A2E73] transition-colors">
-              {insight.actionLabel} →
+          {insight.actionLabel && targetRoute && (
+            <button
+              onClick={() => navigate(targetRoute)}
+              className="mt-2 text-xs font-medium text-[#5B3A8C] hover:text-[#4A2E73] transition-colors"
+            >
+              {insight.actionLabel} \u2192
             </button>
           )}
         </div>

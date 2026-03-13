@@ -3,4 +3,4 @@ using SalonPro.Application.Features.Auth.DTOs;
 
 namespace SalonPro.Application.Features.Auth.Commands.Login;
 
-public record LoginCommand(string Email, string Password, Guid? TenantId = null) : IRequest<AuthResponseDto>;
+public record LoginCommand(string Email, string Password, string? TenantId = null) : IRequest<AuthResponseDto>;

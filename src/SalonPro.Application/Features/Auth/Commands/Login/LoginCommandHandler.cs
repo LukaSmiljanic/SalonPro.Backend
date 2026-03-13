@@ -28,14 +28,33 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
 
     public async Task<AuthResponseDto> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
+        // Resolve TenantId: accept Guid string or tenant slug
+        Guid? resolvedTenantId = null;
+        if (!string.IsNullOrWhiteSpace(request.TenantId))
+        {
+            if (Guid.TryParse(request.TenantId, out var parsedGuid))
+            {
+                resolvedTenantId = parsedGuid;
+            }
+            else
+            {
+                // Treat as slug — look up tenant by slug
+                var tenant = await _unitOfWork.Tenants.Query()
+                    .Where(t => t.Slug == request.TenantId.ToLower())
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (tenant != null)
+                    resolvedTenantId = tenant.Id;
+            }
+        }
+
         var user = await _unitOfWork.Users.Query()
             .Include(u => u.Tenant)
             .Where(u => u.Email == request.Email.ToLower() && u.IsActive)
-            .Where(u => !request.TenantId.HasValue || u.TenantId == request.TenantId.Value)
+            .Where(u => !resolvedTenantId.HasValue || u.TenantId == resolvedTenantId.Value)
             .FirstOrDefaultAsync(cancellationToken);
 
         if (user == null || !_passwordService.VerifyPassword(request.Password, user.PasswordHash))
-            throw new UnauthorizedException("Pogrešan email ili lozinka.");
+            throw new UnauthorizedException("Pogre\u0161an email ili lozinka.");
 
         var tenant = user.Tenant;
 
@@ -45,7 +64,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
 
         // Block login if subscription has expired
         if (tenant != null && !tenant.HasActiveSubscription)
-            throw new UnauthorizedException("Vaša pretplata je istekla. Kontaktirajte podršku za produženje.");
+            throw new UnauthorizedException("Va\u0161a pretplata je istekla. Kontaktirajte podr\u0161ku za produ\u017eenje.");
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
         var refreshToken = _jwtTokenService.GenerateRefreshToken();
