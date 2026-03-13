@@ -196,6 +196,15 @@ input, textarea, select {
   font-size: inherit;
 }
 
+/* Ensure select elements are tappable on mobile */
+@media (max-width: 767px) {
+  select {
+    min-height: 2.75rem; /* 44px */
+    font-size: 1rem;
+    padding: 0.5rem 0.75rem;
+  }
+}
+
 /* =============================================
    SKELETON LOADING
    ============================================= */
@@ -356,6 +365,39 @@ input, textarea, select {
   max-width: 540px;
   max-height: 90dvh;
   overflow-y: auto;
+}
+
+/* =============================================
+   MOBILE TOUCH FRIENDLINESS
+   ============================================= */
+
+@media (max-width: 767px) {
+  /* Slightly larger base font for readability */
+  html {
+    font-size: 16px;
+  }
+
+  /* Larger container padding */
+  .container-main {
+    padding: 0 var(--space-md);
+  }
+
+  /* Cards: tighter but tappable */
+  .card-padded {
+    padding: var(--space-md);
+  }
+
+  /* Modal: full-width on mobile */
+  .modal-overlay {
+    padding: var(--space-sm);
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 85dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
 }
 
 /* =============================================

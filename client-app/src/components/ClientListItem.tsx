@@ -21,34 +21,34 @@ export const ClientListItem: React.FC<ClientListItemProps> = ({ client, onClick,
 
   return (
     <div
-      className={`flex items-start gap-4 p-4 rounded-lg cursor-pointer transition-interactive
+      className={`flex items-start gap-3 md:gap-4 p-4 md:p-4 rounded-lg cursor-pointer transition-interactive active:bg-surface-offset
         ${selected ? 'bg-primary-highlight border border-primary/20' : 'hover:bg-surface-2'}`}
       onClick={() => onClick?.(client)}
     >
       {/* Avatar */}
-      <div className="w-10 h-10 rounded-full bg-primary-highlight flex items-center justify-center shrink-0">
+      <div className="w-11 h-11 md:w-10 md:h-10 rounded-full bg-primary-highlight flex items-center justify-center shrink-0">
         <span className="text-sm font-semibold text-primary">{initialsDisplay}</span>
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-text truncate">{fullName}</p>
+        <p className="font-semibold text-text text-base md:text-sm truncate">{fullName}</p>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
           {client.phone && (
-            <span className="flex items-center gap-1 text-xs text-text-muted">
-              <Phone size={11} />{client.phone}
+            <span className="flex items-center gap-1 text-sm md:text-xs text-text-muted">
+              <Phone size={12} className="md:w-[11px] md:h-[11px]" />{client.phone}
             </span>
           )}
           {client.email && (
-            <span className="flex items-center gap-1 text-xs text-text-muted">
-              <Mail size={11} />{client.email}
+            <span className="flex items-center gap-1 text-sm md:text-xs text-text-muted">
+              <Mail size={12} className="md:w-[11px] md:h-[11px]" />{client.email}
             </span>
           )}
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex flex-col items-end gap-1 shrink-0">
+      {/* Stats – hidden on narrow mobile, shown on wider screens */}
+      <div className="hidden sm:flex flex-col items-end gap-1 shrink-0">
         <span className="flex items-center gap-1 text-xs text-text-muted">
           <Calendar size={11} />{lastVisitStr}
         </span>

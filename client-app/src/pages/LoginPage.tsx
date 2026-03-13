@@ -164,7 +164,7 @@ export const LoginPage: React.FC = () => {
               <button
                 key={m}
                 onClick={() => { setMode(m); setError(null); }}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-interactive
+                className={`flex-1 py-2.5 md:py-1.5 text-base md:text-sm font-medium rounded-md transition-interactive
                   ${mode === m ? 'bg-surface shadow-sm text-text' : 'text-text-muted hover:text-text'}`}
               >
                 {m === 'login' ? 'Prijava' : 'Registracija'}

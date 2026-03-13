@@ -33,7 +33,7 @@ export const Input: React.FC<InputProps> = ({
         )}
         <input
           id={inputId}
-          className={`w-full h-9 bg-surface border rounded-md px-3 text-sm text-text placeholder:text-text-faint
+          className={`w-full h-11 md:h-9 bg-surface border rounded-lg md:rounded-md px-3 text-base md:text-sm text-text placeholder:text-text-faint
             transition-interactive
             focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
             ${error ? 'border-error' : 'border-border'}

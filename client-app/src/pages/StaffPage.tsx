@@ -224,21 +224,21 @@ export const StaffPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1">
                   <button
                     onClick={() => openEditModal(s)}
-                    className="p-2 rounded-lg hover:bg-surface text-text-muted hover:text-text transition-all duration-200"
+                    className="p-3 md:p-2 rounded-lg hover:bg-surface active:bg-surface-offset text-text-muted hover:text-text transition-all duration-200"
                     title="Izmeni"
                   >
-                    <Pencil size={14} />
+                    <Pencil size={16} className="md:w-3.5 md:h-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(s)}
-                    className="p-2 rounded-lg hover:bg-error-bg text-text-muted hover:text-error transition-all duration-200"
+                    className="p-3 md:p-2 rounded-lg hover:bg-error-bg active:bg-error-bg text-text-muted hover:text-error transition-all duration-200"
                     title={s.totalAppointments > 0 ? 'Deaktiviraj' : 'Obriši'}
                     disabled={deleteMutation.isPending}
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} className="md:w-3.5 md:h-3.5" />
                   </button>
                 </div>
               </li>

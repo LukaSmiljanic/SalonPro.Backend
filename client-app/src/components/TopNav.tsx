@@ -62,10 +62,10 @@ export const TopNav: React.FC = () => {
 
         {/* Mobile hamburger */}
         <button
-          className="ml-auto md:hidden p-2 rounded-md text-text-muted hover:bg-surface-2"
+          className="ml-auto md:hidden p-2.5 -mr-1 rounded-lg text-text-muted hover:bg-surface-2 active:bg-surface-offset"
           onClick={() => setMobileOpen(v => !v)}
         >
-          {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+          {mobileOpen ? <X size={22} /> : <Menu size={22} />}
         </button>
       </div>
 
@@ -78,18 +78,18 @@ export const TopNav: React.FC = () => {
               to={to}
               onClick={() => setMobileOpen(false)}
               className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-interactive
-                ${ isActive ? 'bg-primary-highlight text-primary' : 'text-text-muted hover:bg-surface-2' }`
+                `flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium transition-interactive
+                ${ isActive ? 'bg-primary-highlight text-primary' : 'text-text-muted hover:bg-surface-2 active:bg-surface-offset' }`
               }
             >
-              <Icon size={15} />{label}
+              <Icon size={18} />{label}
             </NavLink>
           ))}
           <button
             onClick={() => { logout(); setMobileOpen(false); }}
-            className="flex items-center gap-2 px-3 py-2 rounded-md text-sm text-error hover:bg-error-bg mt-1"
+            className="flex items-center gap-3 px-3 py-3 rounded-lg text-base text-error hover:bg-error-bg active:bg-error-bg mt-1"
           >
-            <LogOut size={14} /> Odjava
+            <LogOut size={18} /> Odjava
           </button>
         </div>
       )}
