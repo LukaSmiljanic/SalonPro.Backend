@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using SalonPro.Application.Features.Staff.Commands.CreateStaffMember;
+using SalonPro.Application.Features.Staff.Commands.UpdateStaffMember;
+using SalonPro.Application.Features.Staff.Commands.DeleteStaffMember;
 using SalonPro.Application.Features.Staff.DTOs;
 using SalonPro.Application.Features.Staff.Queries.GetStaffMembers;
 using SalonPro.Application.Features.Staff.Queries.GetStaffSchedule;
@@ -36,5 +38,29 @@ public class StaffController : ApiControllerBase
     {
         var id = await Mediator.Send(command);
         return Ok(id);
+    }
+
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> UpdateStaffMember(
+        [FromRoute] Guid id,
+        [FromBody] UpdateStaffMemberCommand command)
+    {
+        if (id != command.Id)
+            return BadRequest("ID mismatch.");
+
+        await Mediator.Send(command);
+        return NoContent();
+    }
+
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> DeleteStaffMember([FromRoute] Guid id)
+    {
+        var result = await Mediator.Send(new DeleteStaffMemberCommand(id));
+        return Ok(result);
     }
 }

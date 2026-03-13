@@ -209,11 +209,16 @@ export interface ClientInsights {
 
 export interface StaffMember {
   id: string;
+  firstName: string;
+  lastName: string;
   name: string;
   email: string;
+  phone: string;
   role: string;
   specialties: string[];
   isActive: boolean;
+  colorIndex: number;
+  totalAppointments: number;
 }
 
 export interface CreateStaffRequest {

@@ -21,10 +21,7 @@ public class GetStaffMembersQueryHandler : IRequestHandler<GetStaffMembersQuery,
         var tomorrow = today.AddDays(1);
 
         var query = _unitOfWork.StaffMembers.Query()
-            .Include(s => s.Appointments.Where(a =>
-                a.StartTime >= today &&
-                a.StartTime < tomorrow &&
-                a.Status != AppointmentStatus.Cancelled))
+            .Include(s => s.Appointments)
             .AsNoTracking();
 
         if (!request.IncludeInactive)
@@ -39,12 +36,19 @@ public class GetStaffMembersQueryHandler : IRequestHandler<GetStaffMembersQuery,
 
         return staffMembers.Select(s => new StaffMemberDto(
             s.Id,
+            s.FirstName,
+            s.LastName,
             s.FullName,
             s.Specialization,
             s.Email,
             s.Phone,
             s.IsActive,
-            s.Appointments.Count
+            s.ColorIndex,
+            s.Appointments.Count(a =>
+                a.StartTime >= today &&
+                a.StartTime < tomorrow &&
+                a.Status != AppointmentStatus.Cancelled),
+            s.Appointments.Count(a => a.Status != AppointmentStatus.Cancelled)
         )).ToList();
     }
 }
