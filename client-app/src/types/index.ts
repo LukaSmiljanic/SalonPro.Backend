@@ -276,3 +276,46 @@ export interface CreateServiceRequest {
   durationMinutes: number;
   price: number;
 }
+
+// ─── Settings ────────────────────────────────────────────────────────────────
+export interface WorkingHoursEntry {
+  dayOfWeek: number; // 0=Sunday, 1=Monday, ..., 6=Saturday
+  startTime: string; // "09:00:00"
+  endTime: string;   // "17:00:00"
+  isWorkingDay: boolean;
+}
+
+export interface LoyaltyTierConfig {
+  tierName: string;
+  minVisits: number;
+  benefit: string;
+}
+
+// ─── Reports ─────────────────────────────────────────────────────────────────
+export interface StaffRevenue {
+  staffId: string;
+  staffName: string;
+  totalRevenue: number;
+  appointmentCount: number;
+  averagePerAppointment: number;
+}
+
+export interface ServiceRevenue {
+  serviceName: string;
+  category: string;
+  totalRevenue: number;
+  bookingCount: number;
+  averagePrice: number;
+}
+
+export interface ReportSummary {
+  totalRevenue: number;
+  totalAppointments: number;
+  completedCount: number;
+  cancelledCount: number;
+  noShowCount: number;
+  cancellationRate: number;
+  noShowRate: number;
+  uniqueClients: number;
+  averageRevenuePerDay: number;
+}
