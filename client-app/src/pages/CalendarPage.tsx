@@ -7,6 +7,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Filter } from 'lucide-react';
 import { getAppointments, cancelAppointment, completeAppointment, rescheduleAppointment } from '../api/appointments';
 import { getStaff } from '../api/staff';
+import { getWorkingHours } from '../api/settings';
 import type { Appointment } from '../types';
 import { queryKeys } from '../lib/queryKeys';
 import { AppointmentBlock } from '../components/AppointmentBlock';
@@ -17,9 +18,8 @@ import { Modal } from '../components/Modal';
 import { CreateAppointmentModal } from '../components/CreateAppointmentModal';
 
 const HOUR_HEIGHT = 60;
-const DAY_START = 8;
-const DAY_END   = 22;
-const HOURS = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
+const FALLBACK_DAY_START = 8;
+const FALLBACK_DAY_END   = 22;
 const SNAP_MINUTES = 15;
 const SNAP_PX = HOUR_HEIGHT * (SNAP_MINUTES / 60); // 15px per 15 min
 
@@ -27,8 +27,8 @@ function snapToGrid(px: number): number {
   return Math.round(px / SNAP_PX) * SNAP_PX;
 }
 
-function pxToTime(px: number): { hours: number; minutes: number } {
-  const totalMinutes = DAY_START * 60 + (px / HOUR_HEIGHT) * 60;
+function pxToTime(px: number, dayStart: number): { hours: number; minutes: number } {
+  const totalMinutes = dayStart * 60 + (px / HOUR_HEIGHT) * 60;
   return {
     hours: Math.floor(totalMinutes / 60),
     minutes: Math.round(totalMinutes % 60),
@@ -45,7 +45,7 @@ export const CalendarPage: React.FC = () => {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalDate, setCreateModalDate] = useState<Date | undefined>(undefined);
 
-  // ── Drag state ─────────────────────────────────────────────
+  // ── Drag state ───────────────────────────────────────────────────────────
   // Use a single state object + refs so mouse handlers never read stale values.
   const [dragState, setDragState] = useState<{
     appt: Appointment;
@@ -81,6 +81,37 @@ export const CalendarPage: React.FC = () => {
     queryKey: queryKeys.staff.list(),
     queryFn: () => getStaff(),
   });
+
+  const { data: workingHoursData } = useQuery({
+    queryKey: queryKeys.settings.workingHours(),
+    queryFn: getWorkingHours,
+    staleTime: 5 * 60 * 1000, // 5 min — settings don't change often
+  });
+
+  const dayStart = useMemo(() => {
+    if (!workingHoursData || workingHoursData.length === 0) return FALLBACK_DAY_START;
+    const workingDays = workingHoursData.filter(d => d.isWorkingDay);
+    if (workingDays.length === 0) return FALLBACK_DAY_START;
+    const minHour = Math.min(...workingDays.map(d => parseInt(d.startTime.slice(0, 2), 10)));
+    return isNaN(minHour) ? FALLBACK_DAY_START : Math.max(0, minHour);
+  }, [workingHoursData]);
+
+  const dayEnd = useMemo(() => {
+    if (!workingHoursData || workingHoursData.length === 0) return FALLBACK_DAY_END;
+    const workingDays = workingHoursData.filter(d => d.isWorkingDay);
+    if (workingDays.length === 0) return FALLBACK_DAY_END;
+    const maxHour = Math.max(...workingDays.map(d => {
+      const h = parseInt(d.endTime.slice(0, 2), 10);
+      const m = parseInt(d.endTime.slice(3, 5), 10);
+      return m > 0 ? h + 1 : h; // round up if minutes > 0
+    }));
+    return isNaN(maxHour) ? FALLBACK_DAY_END : Math.min(24, maxHour);
+  }, [workingHoursData]);
+
+  const hours = useMemo(
+    () => Array.from({ length: dayEnd - dayStart }, (_, i) => dayStart + i),
+    [dayStart, dayEnd]
+  );
 
   const appointments = appointmentsData?.items ?? [];
 
@@ -127,9 +158,9 @@ export const CalendarPage: React.FC = () => {
     try {
       const start = parseISO(appt.startTime);
       const end = parseISO(appt.endTime);
-      const dayStart = new Date(start);
-      dayStart.setHours(DAY_START, 0, 0, 0);
-      const minutesFromStart = (start.getTime() - dayStart.getTime()) / (60 * 1000);
+      const dayStartDate = new Date(start);
+      dayStartDate.setHours(dayStart, 0, 0, 0);
+      const minutesFromStart = (start.getTime() - dayStartDate.getTime()) / (60 * 1000);
       const durationMinutes = (end.getTime() - start.getTime()) / (60 * 1000);
       return {
         top: Math.max(0, (minutesFromStart / 60) * HOUR_HEIGHT),
@@ -138,9 +169,9 @@ export const CalendarPage: React.FC = () => {
     } catch {
       return { top: 0, height: HOUR_HEIGHT };
     }
-  }, []);
+  }, [dayStart]);
 
-  // ── Double-click on empty slot ─────────────────────────────
+  // ── Double-click on empty slot ────────────────────────────────────────────────────────────────────
   const handleSlotDoubleClick = useCallback((day: Date, hour: number) => {
     const d = new Date(day);
     d.setHours(hour, 0, 0, 0);
@@ -148,7 +179,7 @@ export const CalendarPage: React.FC = () => {
     setCreateModalOpen(true);
   }, []);
 
-  // ── Drag start (called from AppointmentBlock) ──────────────
+  // ── Drag start (called from AppointmentBlock) ──────────────────────────────────────────────────────
   const handleDragStart = useCallback((appt: Appointment, startY: number, originalTop: number) => {
     const pos = getApptPosition(appt);
     const apptDate = parseISO(appt.startTime);
@@ -179,7 +210,7 @@ export const CalendarPage: React.FC = () => {
     const handleMouseMove = (e: MouseEvent) => {
       const deltaY = e.clientY - dragStartYRef.current;
       const raw = dragOriginalTopRef.current + deltaY;
-      const maxTop = (DAY_END - DAY_START) * HOUR_HEIGHT - dragState.ghostHeight;
+      const maxTop = (dayEnd - dayStart) * HOUR_HEIGHT - dragState.ghostHeight;
       const clamped = Math.max(0, Math.min(raw, maxTop));
       const snapped = snapToGrid(clamped);
       dragGhostTopRef.current = snapped;
@@ -191,7 +222,7 @@ export const CalendarPage: React.FC = () => {
       const ghostTop = dragGhostTopRef.current;
 
       if (appt) {
-        const { hours: newHours, minutes: newMinutes } = pxToTime(ghostTop);
+        const { hours: newHours, minutes: newMinutes } = pxToTime(ghostTop, dayStart);
         const apptDate = parseISO(appt.startTime);
         const newStart = new Date(apptDate);
         newStart.setHours(newHours, newMinutes, 0, 0);
@@ -222,7 +253,7 @@ export const CalendarPage: React.FC = () => {
     };
     // Only re-subscribe when drag starts/stops — NOT on every ghost move
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dragState?.appt?.id]);
+  }, [dragState?.appt?.id, dayStart, dayEnd]);
 
   const handleCreateModalClose = useCallback(() => {
     setCreateModalOpen(false);
@@ -236,18 +267,18 @@ export const CalendarPage: React.FC = () => {
         const now = new Date();
         const currentHour = now.getHours();
         const currentMin = now.getMinutes();
-        const scrollTarget = Math.max(0, ((currentHour - DAY_START) + currentMin / 60) * HOUR_HEIGHT - 100);
+        const scrollTarget = Math.max(0, ((currentHour - dayStart) + currentMin / 60) * HOUR_HEIGHT - 100);
         gridScrollRef.current.scrollTo({ top: scrollTarget, behavior: 'smooth' });
       }
     }, 300);
     return () => clearTimeout(timer);
-  }, []); // only on mount
+  }, [dayStart]); // re-scroll when dayStart changes
 
   // Helper to format the drag time hint
   const dragTimeHint = dragState
     ? (() => {
-        const { hours, minutes } = pxToTime(dragState.ghostTop);
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        const { hours: h, minutes: m } = pxToTime(dragState.ghostTop, dayStart);
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
       })()
     : '';
 
@@ -286,7 +317,7 @@ export const CalendarPage: React.FC = () => {
                 const now = new Date();
                 const currentHour = now.getHours();
                 const currentMin = now.getMinutes();
-                const scrollTarget = Math.max(0, ((currentHour - DAY_START) + currentMin / 60) * HOUR_HEIGHT - 100);
+                const scrollTarget = Math.max(0, ((currentHour - dayStart) + currentMin / 60) * HOUR_HEIGHT - 100);
                 gridScrollRef.current.scrollTo({ top: scrollTarget, behavior: 'smooth' });
               }
             });
@@ -365,7 +396,7 @@ export const CalendarPage: React.FC = () => {
             <div className="calendar-grid">
               {/* Time labels column */}
               <div className="calendar-time-col">
-                {HOURS.map(hour => (
+                {hours.map(hour => (
                   <div key={hour} className="calendar-time-label">
                     {hour}:00
                   </div>
@@ -379,7 +410,7 @@ export const CalendarPage: React.FC = () => {
                   className="calendar-day-col border-l border-divider"
                 >
                   {/* Hour slots with double-click */}
-                  {HOURS.map(hour => (
+                  {hours.map(hour => (
                     <div
                       key={hour}
                       className="calendar-slot"
@@ -392,8 +423,8 @@ export const CalendarPage: React.FC = () => {
                     const now = new Date();
                     const h = now.getHours();
                     const m = now.getMinutes();
-                    if (h >= DAY_START && h < DAY_END) {
-                      const topPx = ((h - DAY_START) + m / 60) * HOUR_HEIGHT;
+                    if (h >= dayStart && h < dayEnd) {
+                      const topPx = ((h - dayStart) + m / 60) * HOUR_HEIGHT;
                       return (
                         <div
                           className="absolute left-0 right-0 z-20 pointer-events-none"
@@ -415,8 +446,6 @@ export const CalendarPage: React.FC = () => {
                     const isDragging = dragState?.appt.id === appt.id;
 
                     if (isDragging) {
-                      // While dragging: show a semi-transparent original in place
-                      // and the ghost at the new position
                       return (
                         <React.Fragment key={appt.id}>
                           {/* Original position — faded */}
