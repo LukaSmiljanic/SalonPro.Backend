@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, Scissors, Menu, X, Package, UserPlus } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, Scissors, Menu, X, Package, UserPlus, BarChart3, Settings } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const navItems = [
@@ -8,7 +8,9 @@ const navItems = [
   { to: '/calendar',  icon: Calendar,        label: 'Kalendar'  },
   { to: '/clients',   icon: Users,           label: 'Klijenti'   },
   { to: '/staff',     icon: UserPlus,        label: 'Zaposleni'  },
-  { to: '/services',  icon: Package,         label: 'Usluge'  },
+  { to: '/services',  icon: Package,         label: 'Usluge'     },
+  { to: '/reports',   icon: BarChart3,       label: 'Izveštaji'  },
+  { to: '/settings',  icon: Settings,        label: 'Podešavanja'},
 ];
 
 export const TopNav: React.FC = () => {

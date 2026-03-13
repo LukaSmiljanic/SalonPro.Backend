@@ -35,4 +35,15 @@ export const queryKeys = {
     all: ['staff'] as const,
     list: () => [...queryKeys.staff.all, 'list'] as const,
   },
+  settings: {
+    all: ['settings'] as const,
+    workingHours: () => [...queryKeys.settings.all, 'working-hours'] as const,
+    loyalty: () => [...queryKeys.settings.all, 'loyalty'] as const,
+  },
+  reports: {
+    all: ['reports'] as const,
+    summary: (from: string, to: string) => [...queryKeys.reports.all, 'summary', from, to] as const,
+    byStaff: (from: string, to: string) => [...queryKeys.reports.all, 'staff', from, to] as const,
+    byService: (from: string, to: string) => [...queryKeys.reports.all, 'service', from, to] as const,
+  },
 } as const;
