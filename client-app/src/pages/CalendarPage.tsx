@@ -58,6 +58,7 @@ export const CalendarPage: React.FC = () => {
   const dragStartYRef = useRef(0);
   const dragOriginalTopRef = useRef(0);
   const dragApptRef = useRef<Appointment | null>(null);
+  const gridScrollRef = useRef<HTMLDivElement>(null);
 
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -228,6 +229,20 @@ export const CalendarPage: React.FC = () => {
     setCreateModalDate(undefined);
   }, []);
 
+  // Auto-scroll to current time on initial load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (gridScrollRef.current) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const currentMin = now.getMinutes();
+        const scrollTarget = Math.max(0, ((currentHour - DAY_START) + currentMin / 60) * HOUR_HEIGHT - 100);
+        gridScrollRef.current.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []); // only on mount
+
   // Helper to format the drag time hint
   const dragTimeHint = dragState
     ? (() => {
@@ -263,7 +278,19 @@ export const CalendarPage: React.FC = () => {
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+          onClick={() => {
+            setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
+            // Scroll to current time
+            requestAnimationFrame(() => {
+              if (gridScrollRef.current) {
+                const now = new Date();
+                const currentHour = now.getHours();
+                const currentMin = now.getMinutes();
+                const scrollTarget = Math.max(0, ((currentHour - DAY_START) + currentMin / 60) * HOUR_HEIGHT - 100);
+                gridScrollRef.current.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+              }
+            });
+          }}
         >
           Danas
         </Button>
@@ -307,7 +334,7 @@ export const CalendarPage: React.FC = () => {
       )}
 
       {/* Calendar grid */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto" ref={gridScrollRef}>
         <div className="min-w-[700px]">
 
           {/* Day headers */}
@@ -359,6 +386,28 @@ export const CalendarPage: React.FC = () => {
                       onDoubleClick={() => handleSlotDoubleClick(day, hour)}
                     />
                   ))}
+
+                  {/* Current time indicator */}
+                  {isToday(day) && (() => {
+                    const now = new Date();
+                    const h = now.getHours();
+                    const m = now.getMinutes();
+                    if (h >= DAY_START && h < DAY_END) {
+                      const topPx = ((h - DAY_START) + m / 60) * HOUR_HEIGHT;
+                      return (
+                        <div
+                          className="absolute left-0 right-0 z-20 pointer-events-none"
+                          style={{ top: topPx }}
+                        >
+                          <div className="flex items-center">
+                            <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                            <div className="flex-1 h-[2px] bg-red-500" />
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
 
                   {/* Appointment blocks */}
                   {getAppointmentsForDay(day).map(appt => {

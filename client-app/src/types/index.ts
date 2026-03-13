@@ -126,6 +126,8 @@ export interface Client {
   email?: string;
   phone?: string;
   notes?: string;
+  isVip?: boolean;
+  tags?: string;
   totalVisits: number;
   totalSpent: number;
   lastVisit?: string;

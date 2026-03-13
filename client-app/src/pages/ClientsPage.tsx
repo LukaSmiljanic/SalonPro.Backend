@@ -135,7 +135,14 @@ export const ClientsPage: React.FC = () => {
     }
     setFormError(null);
     if (editingClient) {
-      updateMutation.mutate({ id: editingClient.id, data: form });
+      updateMutation.mutate({
+        id: editingClient.id,
+        data: {
+          ...form,
+          isVip: editingClient.isVip ?? false,
+          tags: editingClient.tags ?? undefined,
+        },
+      });
     } else {
       createMutation.mutate(form);
     }

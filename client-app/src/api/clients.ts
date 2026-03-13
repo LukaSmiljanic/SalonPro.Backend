@@ -59,6 +59,8 @@ function mapListDtoToClient(item: ClientListDtoItem): Client {
     email: item.email ?? undefined,
     phone: item.phone,
     notes: undefined,
+    isVip: item.isVip,
+    tags: item.tags ?? undefined,
     totalVisits: item.totalVisits ?? 0,
     totalSpent: 0,
     lastVisit: item.lastVisitDate ?? undefined,
@@ -83,6 +85,8 @@ function mapDetailDtoToClient(d: ClientDetailDtoResponse): Client {
     email: d.email ?? undefined,
     phone: d.phone,
     notes: d.notes ?? undefined,
+    isVip: d.isVip,
+    tags: d.tags ?? undefined,
     totalVisits: d.totalVisits,
     totalSpent: d.totalSpent,
     lastVisit: d.lastVisitDate ?? undefined,
@@ -124,8 +128,19 @@ export const createClient = async (data: CreateClientRequest): Promise<Client> =
   return getClient(String(id));
 };
 
-export const updateClient = async (id: string, data: Partial<CreateClientRequest>): Promise<Client> => {
-  await apiClient.put(`/clients/${id}`, data);
+export const updateClient = async (id: string, data: Partial<CreateClientRequest> & { isVip?: boolean; tags?: string }): Promise<Client> => {
+  // Backend UpdateClientCommand requires all fields including Id in body
+  const body = {
+    id,
+    firstName: data.firstName ?? '',
+    lastName: data.lastName ?? '',
+    email: data.email || null,
+    phone: data.phone ?? '',
+    notes: data.notes || null,
+    isVip: data.isVip ?? false,
+    tags: data.tags || null,
+  };
+  await apiClient.put(`/clients/${id}`, body);
   return getClient(id);
 };
 
