@@ -15,6 +15,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<ClientNote> ClientNotes { get; }
     IRepository<WorkingHours> WorkingHours { get; }
     IRepository<Payment> Payments { get; }
+    IRepository<LoyaltyConfig> LoyaltyConfigs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

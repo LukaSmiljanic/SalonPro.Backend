@@ -30,6 +30,7 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<ClientNote> ClientNotes => Set<ClientNote>();
     public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<LoyaltyConfig> LoyaltyConfigs => Set<LoyaltyConfig>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
