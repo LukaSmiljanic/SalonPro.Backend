@@ -50,7 +50,7 @@ public class GetClientInsightsQueryHandler : IRequestHandler<GetClientInsightsQu
         double avgCycleDays = 0;
         DateTime? suggestedNextVisit = null;
 
-        if (completedAppointments.Count >= 2)
+        if (completedAppointments.Count >= 3)
         {
             var gaps = new List<double>();
             for (int i = 1; i < completedAppointments.Count; i++)
@@ -58,16 +58,22 @@ public class GetClientInsightsQueryHandler : IRequestHandler<GetClientInsightsQu
                 gaps.Add((completedAppointments[i].StartTime - completedAppointments[i - 1].StartTime).TotalDays);
             }
             avgCycleDays = Math.Round(gaps.Average(), 1);
-            var lastVisit = completedAppointments.Last().StartTime;
-            suggestedNextVisit = lastVisit.AddDays(avgCycleDays);
 
-            insights.Add(new InsightDto(
-                InsightType.VisitPattern,
-                InsightPriority.Low,
-                $"Dolazi svaka {Math.Round(avgCycleDays)} dana",
-                $"Prosečan ciklus poseta je {avgCycleDays} dana. Poslednja poseta: {lastVisit:dd.MM.yyyy}.",
-                "CalendarClock"
-            ));
+            // Only show cycle insight if the average gap is at least 3 days
+            // (shorter cycles are usually same-visit data noise, not real patterns)
+            if (avgCycleDays >= 3)
+            {
+                var lastVisit = completedAppointments.Last().StartTime;
+                suggestedNextVisit = lastVisit.AddDays(avgCycleDays);
+
+                insights.Add(new InsightDto(
+                    InsightType.VisitPattern,
+                    InsightPriority.Low,
+                    $"Dolazi svaka {Math.Round(avgCycleDays)} dana",
+                    $"Prosečan ciklus poseta je {avgCycleDays} dana. Poslednja poseta: {lastVisit:dd.MM.yyyy}.",
+                    "CalendarClock"
+                ));
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════

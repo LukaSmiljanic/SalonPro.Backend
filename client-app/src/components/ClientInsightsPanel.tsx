@@ -39,7 +39,7 @@ export const ClientInsightsPanel: React.FC<ClientInsightsPanelProps> = ({ client
   if (error || !data) return null;
 
   const hasInsights = data.insights.length > 0;
-  const hasStats = data.averageVisitCycleDays > 0 || data.topService || data.preferredStaffName;
+  const hasStats = data.averageVisitCycleDays >= 3 || data.topService || data.preferredStaffName || data.averageSpendPerVisit > 0;
 
   if (!hasInsights && !hasStats) return null;
 
@@ -53,7 +53,7 @@ export const ClientInsightsPanel: React.FC<ClientInsightsPanelProps> = ({ client
       {/* Quick stats row */}
       {hasStats && (
         <div className="grid grid-cols-2 gap-2 mb-3">
-          {data.averageVisitCycleDays > 0 && (
+          {data.averageVisitCycleDays >= 3 && (
             <div className="bg-[#5B3A8C]/5 rounded-md p-2 text-center">
               <p className="text-xs font-semibold text-text">~{Math.round(data.averageVisitCycleDays)} dana</p>
               <p className="text-[10px] text-text-faint">Ciklus poseta</p>
