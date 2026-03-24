@@ -5,7 +5,7 @@ using SalonPro.Domain.Interfaces;
 
 namespace SalonPro.Application.Features.Settings.Queries.GetWorkingHours;
 
-public class GetWorkingHoursQueryHandler : IRequestHandler<GetWorkingHoursQuery, List<WorkingHoursDto>>
+public class GetWorkingHoursQueryHandler : IRequestHandler<GetWorkingHoursQuery, List<TenantWorkingHoursDto>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentTenantService _currentTenantService;
@@ -16,7 +16,7 @@ public class GetWorkingHoursQueryHandler : IRequestHandler<GetWorkingHoursQuery,
         _currentTenantService = currentTenantService;
     }
 
-    public async Task<List<WorkingHoursDto>> Handle(GetWorkingHoursQuery request, CancellationToken cancellationToken)
+    public async Task<List<TenantWorkingHoursDto>> Handle(GetWorkingHoursQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
             ?? throw new InvalidOperationException("Tenant ID je obavezan za dohvatanje radnog vremena.");
@@ -28,7 +28,7 @@ public class GetWorkingHoursQueryHandler : IRequestHandler<GetWorkingHoursQuery,
             .ToListAsync(cancellationToken);
 
         return workingHours
-            .Select(wh => new WorkingHoursDto(wh.DayOfWeek, wh.StartTime, wh.EndTime, wh.IsWorkingDay))
+            .Select(wh => new TenantWorkingHoursDto(wh.DayOfWeek, wh.StartTime, wh.EndTime, wh.IsWorkingDay))
             .ToList();
     }
 }

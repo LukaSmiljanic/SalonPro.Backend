@@ -12,7 +12,7 @@ namespace SalonPro.API.Controllers;
 public class SettingsController : ApiControllerBase
 {
     [HttpGet("working-hours")]
-    [ProducesResponseType(typeof(List<WorkingHoursDto>), 200)]
+    [ProducesResponseType(typeof(List<TenantWorkingHoursDto>), 200)]
     public async Task<IActionResult> GetWorkingHours()
     {
         var result = await Mediator.Send(new GetWorkingHoursQuery());

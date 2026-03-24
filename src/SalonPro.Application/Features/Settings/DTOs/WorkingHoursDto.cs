@@ -1,6 +1,6 @@
 namespace SalonPro.Application.Features.Settings.DTOs;
 
-public record WorkingHoursDto(
+public record TenantWorkingHoursDto(
     DayOfWeek DayOfWeek,
     TimeSpan StartTime,
     TimeSpan EndTime,
