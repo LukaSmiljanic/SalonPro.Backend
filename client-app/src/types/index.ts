@@ -277,6 +277,26 @@ export interface CreateServiceRequest {
   price: number;
 }
 
+// ─── Tenants (SuperAdmin) ────────────────────────────────────────────────────
+
+export interface TenantInfo {
+  id: string;
+  name: string;
+  slug: string;
+  email?: string;
+  phone?: string;
+  city?: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  subscriptionStatus: string;
+  subscriptionEndDate?: string;
+  daysRemaining?: number;
+  userCount: number;
+  clientCount: number;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
 // ─── Payments (SuperAdmin) ───────────────────────────────────────────────────
 
 export type PaymentStatus = 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';

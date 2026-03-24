@@ -13,8 +13,9 @@ public class TenantResolutionMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<TenantResolutionMiddleware> _logger;
 
-    // Auth controller prefix – all auth endpoints are exempt from tenant requirement
+    // Paths exempt from tenant requirement
     private const string AuthPrefix = "/api/auth/";
+    private static readonly string[] SuperAdminPrefixes = ["/api/payments", "/api/subscriptions", "/api/tenants"];
 
     public TenantResolutionMiddleware(RequestDelegate next, ILogger<TenantResolutionMiddleware> logger)
     {
@@ -63,6 +64,13 @@ public class TenantResolutionMiddleware
 
         // Auth-exempt paths proceed without a tenant ID
         if (path.StartsWith(AuthPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
+        // SuperAdmin endpoints are cross-tenant and don't require a tenant ID
+        if (SuperAdminPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
         {
             await _next(context);
             return;

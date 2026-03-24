@@ -57,14 +57,19 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
             throw new UnauthorizedException("Pogre\u0161an email ili lozinka.");
 
         var tenant = user.Tenant;
+        var isSuperAdmin = user.Role == Domain.Enums.UserRole.SuperAdmin;
 
-        // Block login if email is not verified
-        if (tenant != null && !tenant.EmailVerified)
-            throw new UnauthorizedException("Email adresa nije verifikovana. Proverite inbox za aktivacioni link.");
+        // SuperAdmin bypasses tenant-level checks
+        if (!isSuperAdmin)
+        {
+            // Block login if email is not verified
+            if (tenant != null && !tenant.EmailVerified)
+                throw new UnauthorizedException("Email adresa nije verifikovana. Proverite inbox za aktivacioni link.");
 
-        // Block login if subscription has expired
-        if (tenant != null && !tenant.HasActiveSubscription)
-            throw new UnauthorizedException("Va\u0161a pretplata je istekla. Kontaktirajte podr\u0161ku za produ\u017eenje.");
+            // Block login if subscription has expired
+            if (tenant != null && !tenant.HasActiveSubscription)
+                throw new UnauthorizedException("Va\u0161a pretplata je istekla. Kontaktirajte podr\u0161ku za produ\u017eenje.");
+        }
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
         var refreshToken = _jwtTokenService.GenerateRefreshToken();

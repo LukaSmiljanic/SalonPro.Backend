@@ -9,7 +9,8 @@ import {
   getPayments, getPaymentSummary, createPayment,
   updatePaymentStatus, deletePayment
 } from '../api/payments';
-import type { Payment, PaymentStatus, PaymentSummary } from '../types';
+import { getTenants } from '../api/tenants';
+import type { Payment, PaymentStatus, PaymentSummary, TenantInfo } from '../types';
 import { queryKeys } from '../lib/queryKeys';
 import { KpiCard } from '../components/KpiCard';
 import { Button } from '../components/Button';
@@ -105,10 +106,10 @@ const StatusDropdown: React.FC<{
 interface CreatePaymentModalProps {
   open: boolean;
   onClose: () => void;
-  summaries: PaymentSummary[];
+  tenants: TenantInfo[];
 }
 
-const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, summaries }) => {
+const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, tenants }) => {
   const queryClient = useQueryClient();
   const [tenantId, setTenantId] = useState('');
   const [amount, setAmount] = useState('');
@@ -170,8 +171,8 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
               focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
           >
             <option value="">Izaberite salon...</option>
-            {summaries.map(s => (
-              <option key={s.tenantId} value={s.tenantId}>{s.tenantName}</option>
+            {tenants.map(t => (
+              <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
         </div>
@@ -216,6 +217,11 @@ export const PaymentsPage: React.FC = () => {
     queryFn: getPaymentSummary,
   });
 
+  const tenantsQuery = useQuery({
+    queryKey: queryKeys.tenants.list(),
+    queryFn: getTenants,
+  });
+
   const statusMutation = useMutation({
     mutationFn: updatePaymentStatus,
     onSuccess: () => {
@@ -232,6 +238,7 @@ export const PaymentsPage: React.FC = () => {
 
   const payments: Payment[] = paymentsQuery.data ?? [];
   const summaries: PaymentSummary[] = summaryQuery.data ?? [];
+  const allTenants: TenantInfo[] = tenantsQuery.data ?? [];
   const isLoading = paymentsQuery.isLoading;
 
   // Aggregate KPI from summaries
@@ -458,7 +465,7 @@ export const PaymentsPage: React.FC = () => {
       <CreatePaymentModal
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        summaries={summaries}
+        tenants={allTenants}
       />
     </div>
   );

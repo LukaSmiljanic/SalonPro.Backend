@@ -11,8 +11,11 @@ export const ProtectedRoute: React.FC = () => {
 };
 
 export const PublicOnlyRoute: React.FC = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   if (isLoading) return <LoadingSpinner fullPage />;
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated) {
+    const target = user?.role === 'SuperAdmin' ? '/tenants' : '/dashboard';
+    return <Navigate to={target} replace />;
+  }
   return <Outlet />;
 };

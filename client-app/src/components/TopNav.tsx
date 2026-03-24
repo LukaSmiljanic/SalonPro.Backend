@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Calendar, Users, LogOut, Scissors, Menu, X, Package, UserPlus, BarChart3, Settings, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, Scissors, Menu, X, Package, UserPlus, BarChart3, Settings, CreditCard, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 interface NavItem {
@@ -10,7 +10,7 @@ interface NavItem {
   superAdminOnly?: boolean;
 }
 
-const allNavItems: NavItem[] = [
+const salonNavItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Kontrolna tabla' },
   { to: '/calendar',  icon: Calendar,        label: 'Kalendar'  },
   { to: '/clients',   icon: Users,           label: 'Klijenti'   },
@@ -18,14 +18,18 @@ const allNavItems: NavItem[] = [
   { to: '/services',  icon: Package,         label: 'Usluge'     },
   { to: '/reports',   icon: BarChart3,       label: 'Izveštaji'  },
   { to: '/settings',  icon: Settings,        label: 'Podešavanja'},
-  { to: '/payments',  icon: CreditCard,      label: 'Plaćanja',  superAdminOnly: true },
+];
+
+const superAdminNavItems: NavItem[] = [
+  { to: '/tenants',   icon: Building2,       label: 'Saloni'    },
+  { to: '/payments',  icon: CreditCard,      label: 'Plaćanja'  },
 ];
 
 export const TopNav: React.FC = () => {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isSuperAdmin = user?.role === 'SuperAdmin';
-  const navItems = allNavItems.filter(item => !item.superAdminOnly || isSuperAdmin);
+  const navItems = isSuperAdmin ? superAdminNavItems : salonNavItems;
 
   return (
     <header className="sticky top-0 z-40 bg-surface border-b border-border">
