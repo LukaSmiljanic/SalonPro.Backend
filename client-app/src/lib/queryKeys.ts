@@ -46,4 +46,10 @@ export const queryKeys = {
     byStaff: (from: string, to: string) => [...queryKeys.reports.all, 'staff', from, to] as const,
     byService: (from: string, to: string) => [...queryKeys.reports.all, 'service', from, to] as const,
   },
+  payments: {
+    all: ['payments'] as const,
+    list: (params?: { year?: number; month?: number; status?: string }) =>
+      [...queryKeys.payments.all, 'list', params] as const,
+    summary: () => [...queryKeys.payments.all, 'summary'] as const,
+  },
 } as const;

@@ -277,6 +277,48 @@ export interface CreateServiceRequest {
   price: number;
 }
 
+// ─── Payments (SuperAdmin) ───────────────────────────────────────────────────
+
+export type PaymentStatus = 'Pending' | 'Paid' | 'Overdue' | 'Cancelled';
+
+export interface Payment {
+  id: string;
+  tenantId: string;
+  tenantName: string;
+  amount: number;
+  currency: string;
+  periodStart: string;
+  periodEnd: string;
+  status: PaymentStatus;
+  paidAt?: string;
+  notes?: string;
+  paidBy?: string;
+  createdAt: string;
+}
+
+export interface PaymentSummary {
+  tenantId: string;
+  tenantName: string;
+  totalPaid: number;
+  totalPending: number;
+  lastPaymentDate?: string;
+}
+
+export interface CreatePaymentRequest {
+  tenantId: string;
+  amount: number;
+  currency: string;
+  periodStart: string;
+  periodEnd: string;
+  notes?: string;
+}
+
+export interface UpdatePaymentStatusRequest {
+  id: string;
+  status: PaymentStatus;
+  paidBy?: string;
+}
+
 // ─── Settings ────────────────────────────────────────────────────────────────
 export interface WorkingHoursEntry {
   dayOfWeek: number; // 0=Sunday, 1=Monday, ..., 6=Saturday

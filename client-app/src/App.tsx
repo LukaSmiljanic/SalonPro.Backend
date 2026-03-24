@@ -11,6 +11,7 @@ import { ServicesPage } from './pages/ServicesPage';
 import { StaffPage } from './pages/StaffPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { PaymentsPage } from './pages/PaymentsPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
 
 const App: React.FC = () => {
@@ -33,6 +34,7 @@ const App: React.FC = () => {
               <Route path="/services" element={<ServicesPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/payments" element={<PaymentsPage />} />
             </Route>
           </Route>
 
