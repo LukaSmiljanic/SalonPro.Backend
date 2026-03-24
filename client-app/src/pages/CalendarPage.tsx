@@ -10,6 +10,7 @@ import { getStaff } from '../api/staff';
 import { getWorkingHours } from '../api/settings';
 import type { Appointment } from '../types';
 import { queryKeys } from '../lib/queryKeys';
+import { toLocalISOString } from '../lib/dateUtils';
 import { AppointmentBlock } from '../components/AppointmentBlock';
 import { Badge } from '../components/Badge';
 import { Button } from '../components/Button';
@@ -241,7 +242,7 @@ export const CalendarPage: React.FC = () => {
         if (newStart.getTime() !== origStart.getTime()) {
           rescheduleMutation.mutate({
             id: appt.id,
-            newStartTime: newStart.toISOString(),
+            newStartTime: toLocalISOString(newStart),
           });
         }
       }

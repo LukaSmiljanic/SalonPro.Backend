@@ -8,6 +8,7 @@ import { createAppointment } from '../api/appointments';
 import { getWorkingHours } from '../api/settings';
 import type { Client, StaffMember, Service, CreateAppointmentRequest } from '../types';
 import { queryKeys } from '../lib/queryKeys';
+import { toLocalISOString } from '../lib/dateUtils';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -145,7 +146,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     const [year, month, day] = date.split('-').map(Number);
     const [hours, minutes] = time.split(':').map(Number);
     const startDateTime = setMinutes(setHours(new Date(year, month - 1, day), hours), minutes);
-    const startTimeIso = startDateTime.toISOString();
+    const startTimeIso = toLocalISOString(startDateTime);
     createMutation.mutate({
       clientId,
       staffId,
