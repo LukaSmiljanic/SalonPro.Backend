@@ -7,21 +7,21 @@ public class CreateAppointmentCommandValidator : AbstractValidator<CreateAppoint
     public CreateAppointmentCommandValidator()
     {
         RuleFor(x => x.ClientId)
-            .NotEmpty().WithMessage("Client ID is required.");
+            .NotEmpty().WithMessage("Klijent je obavezan.");
 
         RuleFor(x => x.StaffMemberId)
-            .NotEmpty().WithMessage("Staff member ID is required.");
+            .NotEmpty().WithMessage("Zaposleni je obavezan.");
 
         RuleFor(x => x.StartTime)
-            .NotEmpty().WithMessage("Start time is required.")
-            .GreaterThan(DateTime.UtcNow.AddMinutes(-5)).WithMessage("Start time must be in the future.");
+            .NotEmpty().WithMessage("Vreme početka je obavezno.")
+            .GreaterThan(DateTime.UtcNow.AddMinutes(-5)).WithMessage("Vreme početka mora biti u budućnosti.");
 
         RuleFor(x => x.ServiceIds)
-            .NotEmpty().WithMessage("At least one service must be selected.")
-            .Must(ids => ids.Count > 0).WithMessage("At least one service must be selected.");
+            .NotEmpty().WithMessage("Izaberite bar jednu uslugu.")
+            .Must(ids => ids.Count > 0).WithMessage("Izaberite bar jednu uslugu.");
 
         RuleFor(x => x.Notes)
-            .MaximumLength(1000).WithMessage("Notes must not exceed 1000 characters.")
+            .MaximumLength(1000).WithMessage("Napomene ne smeju biti duže od 1000 karaktera.")
             .When(x => x.Notes != null);
     }
 }

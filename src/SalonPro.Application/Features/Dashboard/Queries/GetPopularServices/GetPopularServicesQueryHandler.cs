@@ -21,7 +21,7 @@ public class GetPopularServicesQueryHandler : IRequestHandler<GetPopularServices
     public async Task<List<PopularServiceDto>> Handle(GetPopularServicesQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant ID is required for popular services.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var today = DateTime.UtcNow.Date;
         DateTime startDate;

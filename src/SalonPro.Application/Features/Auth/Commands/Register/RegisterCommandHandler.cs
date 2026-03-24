@@ -46,14 +46,14 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
             u => u.Email == request.Email.ToLower(), cancellationToken);
 
         if (existingUser != null)
-            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("Email", "Email is already in use.") });
+            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("Email", "Ova email adresa je već u upotrebi.") });
 
         // Check if tenant slug already exists
         var existingTenant = await _unitOfWork.Tenants.FirstOrDefaultAsync(
             t => t.Slug == request.TenantSlug.ToLower(), cancellationToken);
 
         if (existingTenant != null)
-            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("TenantSlug", "Tenant slug is already taken.") });
+            throw new ValidationException(new[] { new FluentValidation.Results.ValidationFailure("TenantSlug", "Ovaj URL identifikator salona je već zauzet.") });
 
         // Generate email verification token
         var verificationToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))

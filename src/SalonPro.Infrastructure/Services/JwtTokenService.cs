@@ -22,7 +22,7 @@ public class JwtTokenService : IJwtTokenService
     {
         var jwtSettings = _configuration.GetSection("JwtSettings");
         var secret = jwtSettings["Secret"]
-            ?? throw new InvalidOperationException("JwtSettings:Secret is missing.");
+            ?? throw new InvalidOperationException("JwtSettings:Secret nedostaje.");
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

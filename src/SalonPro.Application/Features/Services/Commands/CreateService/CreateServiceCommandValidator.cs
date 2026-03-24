@@ -7,21 +7,21 @@ public class CreateServiceCommandValidator : AbstractValidator<CreateServiceComm
     public CreateServiceCommandValidator()
     {
         RuleFor(x => x.CategoryId)
-            .NotEmpty().WithMessage("Category is required.");
+            .NotEmpty().WithMessage("Kategorija je obavezna.");
 
         RuleFor(x => x.Name)
-            .NotEmpty().WithMessage("Service name is required.")
-            .MaximumLength(200).WithMessage("Service name must not exceed 200 characters.");
+            .NotEmpty().WithMessage("Naziv usluge je obavezan.")
+            .MaximumLength(200).WithMessage("Naziv usluge ne sme biti duži od 200 karaktera.");
 
         RuleFor(x => x.DurationMinutes)
-            .GreaterThan(0).WithMessage("Duration must be greater than 0 minutes.")
-            .LessThanOrEqualTo(480).WithMessage("Duration must not exceed 480 minutes (8 hours).");
+            .GreaterThan(0).WithMessage("Trajanje mora biti veće od 0 minuta.")
+            .LessThanOrEqualTo(480).WithMessage("Trajanje ne sme preći 480 minuta (8 sati).");
 
         RuleFor(x => x.Price)
-            .GreaterThanOrEqualTo(0).WithMessage("Price must be 0 or greater.");
+            .GreaterThanOrEqualTo(0).WithMessage("Cena mora biti 0 ili veća.");
 
         RuleFor(x => x.Description)
-            .MaximumLength(1000).WithMessage("Description must not exceed 1000 characters.")
+            .MaximumLength(1000).WithMessage("Opis ne sme biti duži od 1000 karaktera.")
             .When(x => x.Description != null);
     }
 }

@@ -7,31 +7,31 @@ public class UpdateClientCommandValidator : AbstractValidator<UpdateClientComman
     public UpdateClientCommandValidator()
     {
         RuleFor(x => x.Id)
-            .NotEmpty().WithMessage("Client ID is required.");
+            .NotEmpty().WithMessage("ID klijenta je obavezan.");
 
         RuleFor(x => x.FirstName)
-            .NotEmpty().WithMessage("First name is required.")
-            .MaximumLength(100).WithMessage("First name must not exceed 100 characters.");
+            .NotEmpty().WithMessage("Ime je obavezno.")
+            .MaximumLength(100).WithMessage("Ime ne sme biti duže od 100 karaktera.");
 
         RuleFor(x => x.LastName)
-            .NotEmpty().WithMessage("Last name is required.")
-            .MaximumLength(100).WithMessage("Last name must not exceed 100 characters.");
+            .NotEmpty().WithMessage("Prezime je obavezno.")
+            .MaximumLength(100).WithMessage("Prezime ne sme biti duže od 100 karaktera.");
 
         RuleFor(x => x.Phone)
-            .NotEmpty().WithMessage("Phone number is required.")
-            .MaximumLength(20).WithMessage("Phone must not exceed 20 characters.");
+            .NotEmpty().WithMessage("Telefon je obavezan.")
+            .MaximumLength(20).WithMessage("Telefon ne sme biti duži od 20 karaktera.");
 
         RuleFor(x => x.Email)
-            .EmailAddress().WithMessage("A valid email address is required.")
-            .MaximumLength(256).WithMessage("Email must not exceed 256 characters.")
+            .EmailAddress().WithMessage("Unesite ispravnu email adresu.")
+            .MaximumLength(256).WithMessage("Email ne sme biti duži od 256 karaktera.")
             .When(x => !string.IsNullOrEmpty(x.Email));
 
         RuleFor(x => x.Notes)
-            .MaximumLength(1000).WithMessage("Notes must not exceed 1000 characters.")
+            .MaximumLength(1000).WithMessage("Napomene ne smeju biti duže od 1000 karaktera.")
             .When(x => x.Notes != null);
 
         RuleFor(x => x.Tags)
-            .MaximumLength(500).WithMessage("Tags must not exceed 500 characters.")
+            .MaximumLength(500).WithMessage("Oznake ne smeju biti duže od 500 karaktera.")
             .When(x => x.Tags != null);
     }
 }

@@ -20,7 +20,7 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
     public async Task<DashboardStatsDto> Handle(GetDashboardStatsQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant ID is required for dashboard stats.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var targetDate = (request.Date ?? DateTime.UtcNow).Date;
         var targetDateEnd = targetDate.AddDays(1);

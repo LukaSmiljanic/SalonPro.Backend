@@ -7,31 +7,31 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
     public RegisterCommandValidator()
     {
         RuleFor(x => x.TenantName)
-            .NotEmpty().WithMessage("Salon name is required.")
-            .MaximumLength(100).WithMessage("Salon name cannot exceed 100 characters.");
+            .NotEmpty().WithMessage("Naziv salona je obavezan.")
+            .MaximumLength(100).WithMessage("Naziv salona ne sme biti duži od 100 karaktera.");
 
         RuleFor(x => x.TenantSlug)
-            .NotEmpty().WithMessage("Salon slug is required.")
-            .MaximumLength(50).WithMessage("Salon slug cannot exceed 50 characters.")
-            .Matches(@"^[a-z0-9-]+$").WithMessage("Salon slug can only contain lowercase letters, numbers, and hyphens.");
+            .NotEmpty().WithMessage("URL identifikator salona je obavezan.")
+            .MaximumLength(50).WithMessage("URL identifikator ne sme biti duži od 50 karaktera.")
+            .Matches(@"^[a-z0-9-]+$").WithMessage("URL identifikator može sadržati samo mala slova, brojeve i crtice.");
 
         RuleFor(x => x.Email)
-            .NotEmpty().WithMessage("Email is required.")
-            .EmailAddress().WithMessage("A valid email address is required.");
+            .NotEmpty().WithMessage("Email je obavezan.")
+            .EmailAddress().WithMessage("Unesite ispravnu email adresu.");
 
         RuleFor(x => x.Password)
-            .NotEmpty().WithMessage("Password is required.")
-            .MinimumLength(8).WithMessage("Password must be at least 8 characters.")
-            .Matches(@"[A-Z]").WithMessage("Password must contain at least one uppercase letter.")
-            .Matches(@"[a-z]").WithMessage("Password must contain at least one lowercase letter.")
-            .Matches(@"[0-9]").WithMessage("Password must contain at least one number.");
+            .NotEmpty().WithMessage("Lozinka je obavezna.")
+            .MinimumLength(8).WithMessage("Lozinka mora imati najmanje 8 karaktera.")
+            .Matches(@"[A-Z]").WithMessage("Lozinka mora sadržati bar jedno veliko slovo.")
+            .Matches(@"[a-z]").WithMessage("Lozinka mora sadržati bar jedno malo slovo.")
+            .Matches(@"[0-9]").WithMessage("Lozinka mora sadržati bar jedan broj.");
 
         RuleFor(x => x.FirstName)
-            .NotEmpty().WithMessage("First name is required.")
-            .MaximumLength(50).WithMessage("First name cannot exceed 50 characters.");
+            .NotEmpty().WithMessage("Ime je obavezno.")
+            .MaximumLength(50).WithMessage("Ime ne sme biti duže od 50 karaktera.");
 
         RuleFor(x => x.LastName)
-            .NotEmpty().WithMessage("Last name is required.")
-            .MaximumLength(50).WithMessage("Last name cannot exceed 50 characters.");
+            .NotEmpty().WithMessage("Prezime je obavezno.")
+            .MaximumLength(50).WithMessage("Prezime ne sme biti duže od 50 karaktera.");
     }
 }

@@ -35,7 +35,7 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
     public async Task<Guid> Handle(CreateAppointmentCommand request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant context is not set.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var client = await _unitOfWork.Clients.GetByIdAsync(request.ClientId, cancellationToken)
             ?? throw new NotFoundException(nameof(Client), request.ClientId);
@@ -49,7 +49,7 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
 
         if (services.Count != request.ServiceIds.Count())
         {
-            throw new NotFoundException("One or more services were not found or are inactive.");
+            throw new NotFoundException("Jedna ili više usluga nisu pronađene ili su neaktivne.");
         }
 
         // Validate against tenant working hours

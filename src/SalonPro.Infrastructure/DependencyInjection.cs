@@ -62,7 +62,7 @@ public static class DependencyInjection
         // ── JWT Authentication ───────────────────────────────────────
         var jwtSettings = configuration.GetSection("JwtSettings");
         var secret = jwtSettings["Secret"]
-            ?? throw new InvalidOperationException("JwtSettings:Secret is not configured.");
+            ?? throw new InvalidOperationException("JwtSettings:Secret nije konfigurisan.");
 
         services.AddAuthentication(options =>
         {

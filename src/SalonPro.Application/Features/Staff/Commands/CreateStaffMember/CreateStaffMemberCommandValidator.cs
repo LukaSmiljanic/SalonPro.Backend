@@ -7,24 +7,24 @@ public class CreateStaffMemberCommandValidator : AbstractValidator<CreateStaffMe
     public CreateStaffMemberCommandValidator()
     {
         RuleFor(x => x.FirstName)
-            .NotEmpty().WithMessage("First name is required.")
-            .MaximumLength(100).WithMessage("First name must not exceed 100 characters.");
+            .NotEmpty().WithMessage("Ime je obavezno.")
+            .MaximumLength(100).WithMessage("Ime ne sme imati više od 100 karaktera.");
 
         RuleFor(x => x.LastName)
-            .NotEmpty().WithMessage("Last name is required.")
-            .MaximumLength(100).WithMessage("Last name must not exceed 100 characters.");
+            .NotEmpty().WithMessage("Prezime je obavezno.")
+            .MaximumLength(100).WithMessage("Prezime ne sme imati više od 100 karaktera.");
 
         RuleFor(x => x.Email)
-            .EmailAddress().WithMessage("A valid email address is required.")
-            .MaximumLength(256).WithMessage("Email must not exceed 256 characters.")
+            .EmailAddress().WithMessage("Unesite validnu email adresu.")
+            .MaximumLength(256).WithMessage("Email ne sme imati više od 256 karaktera.")
             .When(x => !string.IsNullOrEmpty(x.Email));
 
         RuleFor(x => x.Phone)
-            .MaximumLength(20).WithMessage("Phone must not exceed 20 characters.")
+            .MaximumLength(20).WithMessage("Telefon ne sme imati više od 20 karaktera.")
             .When(x => x.Phone != null);
 
         RuleFor(x => x.Specialization)
-            .MaximumLength(200).WithMessage("Specialization must not exceed 200 characters.")
+            .MaximumLength(200).WithMessage("Specijalizacija ne sme imati više od 200 karaktera.")
             .When(x => x.Specialization != null);
     }
 }

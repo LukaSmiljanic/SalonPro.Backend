@@ -35,7 +35,7 @@ public class CancelAppointmentCommandHandler : IRequestHandler<CancelAppointment
 
         if (appointment.Status == AppointmentStatus.Completed)
         {
-            throw new ForbiddenAccessException("Cannot cancel a completed appointment.");
+            throw new ForbiddenAccessException("Nije moguće otkazati završen termin.");
         }
 
         appointment.Status = AppointmentStatus.Cancelled;

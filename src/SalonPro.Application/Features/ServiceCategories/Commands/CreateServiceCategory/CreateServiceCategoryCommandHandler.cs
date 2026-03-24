@@ -20,7 +20,7 @@ public class CreateServiceCategoryCommandHandler : IRequestHandler<CreateService
     public async Task<Guid> Handle(CreateServiceCategoryCommand request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant context is not set.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var category = new ServiceCategory
         {

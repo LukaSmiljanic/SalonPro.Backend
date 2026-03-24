@@ -23,7 +23,7 @@ public class GetRevenueChartQueryHandler : IRequestHandler<GetRevenueChartQuery,
     public async Task<RevenueChartDto> Handle(GetRevenueChartQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant ID is required for revenue chart.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var today = DateTime.UtcNow.Date;
         DateTime startDate;

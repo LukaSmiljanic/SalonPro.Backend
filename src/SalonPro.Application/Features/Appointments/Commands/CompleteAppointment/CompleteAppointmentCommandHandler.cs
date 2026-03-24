@@ -22,7 +22,7 @@ public class CompleteAppointmentCommandHandler : IRequestHandler<CompleteAppoint
 
         if (appointment.Status == AppointmentStatus.Cancelled)
         {
-            throw new ForbiddenAccessException("Cannot complete a cancelled appointment.");
+            throw new ForbiddenAccessException("Nije moguće završiti otkazan termin.");
         }
 
         appointment.Status = AppointmentStatus.Completed;

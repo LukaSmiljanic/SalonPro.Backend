@@ -20,7 +20,7 @@ public class GetClientInsightsQueryHandler : IRequestHandler<GetClientInsightsQu
     public async Task<ClientInsightsDto> Handle(GetClientInsightsQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant ID is required.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var now = DateTime.UtcNow;
         var insights = new List<InsightDto>();

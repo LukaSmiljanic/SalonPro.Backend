@@ -35,7 +35,7 @@ public class UpdateAppointmentCommandHandler : IRequestHandler<UpdateAppointment
 
         if (services.Count != request.ServiceIds.Count)
         {
-            throw new NotFoundException("One or more services were not found or are inactive.");
+            throw new NotFoundException("Jedna ili više usluga nisu pronađene ili su neaktivne.");
         }
 
         foreach (var existingService in appointment.AppointmentServices.ToList())

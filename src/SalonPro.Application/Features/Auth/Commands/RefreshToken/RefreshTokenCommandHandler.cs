@@ -29,7 +29,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         var userId = _jwtTokenService.ValidateRefreshToken(request.RefreshToken, null!);
 
         if (userId == null)
-            throw new UnauthorizedException("Invalid refresh token.");
+            throw new UnauthorizedException("Nevažeći token za osvežavanje.");
 
         var user = await _unitOfWork.Users.Query()
             .Include(u => u.Tenant)
@@ -37,7 +37,7 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
             u => u.Id == userId && u.RefreshToken == request.RefreshToken && u.IsActive, cancellationToken);
 
         if (user == null || user.RefreshTokenExpiry <= _dateTimeService.UtcNow)
-            throw new UnauthorizedException("Invalid or expired refresh token.");
+            throw new UnauthorizedException("Nevažeći ili istekao token za osvežavanje.");
 
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
         var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
