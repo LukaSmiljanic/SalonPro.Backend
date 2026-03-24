@@ -39,6 +39,10 @@ public class RefreshTokenCommandHandler : IRequestHandler<RefreshTokenCommand, A
         if (user == null || user.RefreshTokenExpiry <= _dateTimeService.UtcNow)
             throw new UnauthorizedException("Nevažeći ili istekao token za osvežavanje.");
 
+        // Block refresh if subscription has expired (skip for SuperAdmin)
+        if (user.Role != Domain.Enums.UserRole.SuperAdmin && user.Tenant != null && !user.Tenant.HasActiveSubscription)
+            throw new UnauthorizedException("Vaša pretplata je istekla. Kontaktirajte podršku za produženje.");
+
         var accessToken = _jwtTokenService.GenerateAccessToken(user);
         var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
 

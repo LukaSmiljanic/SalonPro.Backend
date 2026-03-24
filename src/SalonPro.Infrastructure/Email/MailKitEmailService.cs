@@ -59,6 +59,20 @@ public class MailKitEmailService : IEmailService
         await SendEmailAsync(toEmail, "Aktivirajte Vaš SalonPro nalog", html, cancellationToken);
     }
 
+    public async Task SendSubscriptionWarningAsync(string toEmail, string tenantName, int daysRemaining, DateTime expirationDate, CancellationToken cancellationToken = default)
+    {
+        var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Belgrade");
+        var localDate = TimeZoneInfo.ConvertTimeFromUtc(expirationDate, tz);
+        var html = EmailTemplates.SubscriptionWarning(tenantName, daysRemaining, localDate.ToString("dd.MM.yyyy"));
+        await SendEmailAsync(toEmail, $"Pretplata ističe za {daysRemaining} dana — {tenantName}", html, cancellationToken);
+    }
+
+    public async Task SendSubscriptionExpiredAsync(string toEmail, string tenantName, CancellationToken cancellationToken = default)
+    {
+        var html = EmailTemplates.SubscriptionExpired(tenantName);
+        await SendEmailAsync(toEmail, $"Pretplata je istekla — {tenantName}", html, cancellationToken);
+    }
+
     private async Task SendEmailAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken)
     {
         if (!_settings.Enabled)

@@ -6,6 +6,8 @@ public interface IEmailService
     Task SendAppointmentReminderAsync(AppointmentEmailDto appointment, CancellationToken cancellationToken = default);
     Task SendAppointmentCancellationAsync(AppointmentEmailDto appointment, string? reason, CancellationToken cancellationToken = default);
     Task SendEmailVerificationAsync(string toEmail, string tenantName, string verificationUrl, CancellationToken cancellationToken = default);
+    Task SendSubscriptionWarningAsync(string toEmail, string tenantName, int daysRemaining, DateTime expirationDate, CancellationToken cancellationToken = default);
+    Task SendSubscriptionExpiredAsync(string toEmail, string tenantName, CancellationToken cancellationToken = default);
 }
 
 public record AppointmentEmailDto(

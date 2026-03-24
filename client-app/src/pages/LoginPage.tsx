@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Scissors, Eye, EyeOff, AlertCircle, MailCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/Button';
@@ -30,6 +30,14 @@ export const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [searchParams] = useSearchParams();
+  const isExpired = searchParams.get('expired') === '1';
+
+  useEffect(() => {
+    if (isExpired) {
+      setError('Vaša pretplata je istekla. Kontaktirajte podršku za produženje.');
+    }
+  }, [isExpired]);
 
   const [loginForm, setLoginForm] = useState<LoginForm>({
     email: '',
@@ -174,7 +182,7 @@ export const LoginPage: React.FC = () => {
 
           {/* Error banner */}
           {error && (
-            <div className="flex items-start gap-2 p-3 bg-error-bg border border-error/20 rounded-md mb-4 text-sm text-error">
+            <div className={`flex items-start gap-2 p-3 border rounded-md mb-4 text-sm ${isExpired && error?.includes('pretplata') ? 'bg-warning/5 border-warning/30 text-warning' : 'bg-error-bg border-error/20 text-error'}`}>
               <AlertCircle size={15} className="mt-0.5 shrink-0" />
               <span>{error}</span>
             </div>

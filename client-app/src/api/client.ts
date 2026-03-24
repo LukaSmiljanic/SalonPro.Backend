@@ -88,11 +88,21 @@ const processQueue = (error: unknown, token: string | null = null) => {
   failedQueue = [];
 };
 
-// Response interceptor: handle 401 → try refresh token
+// Response interceptor: handle 401 → try refresh token, 403 → subscription expired
 apiClient.interceptors.response.use(
   response => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+    // Handle 403 — subscription expired
+    if (error.response?.status === 403) {
+      const data = error.response.data as Record<string, unknown> | undefined;
+      if (data?.title === 'Pretplata je istekla.') {
+        clearStoredAuth();
+        window.location.href = '/?expired=1';
+        return Promise.reject(error);
+      }
+    }
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {

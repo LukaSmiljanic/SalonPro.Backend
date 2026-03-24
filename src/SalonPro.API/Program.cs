@@ -61,6 +61,7 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<CompletePastAppointmentsJob>();
 builder.Services.AddHostedService<AppointmentReminderJob>();
+builder.Services.AddHostedService<SubscriptionExpirationJob>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -92,6 +93,7 @@ app.UseCors();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<SubscriptionCheckMiddleware>();
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.MapControllers();
 

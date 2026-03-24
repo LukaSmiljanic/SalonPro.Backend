@@ -198,4 +198,53 @@ public static class EmailTemplates
 
         return BaseLayout("Termin otkazan", DangerColor, "❌", body, salonName);
     }
+
+    public static string SubscriptionWarning(string tenantName, int daysRemaining, string expirationDate)
+    {
+        var body = $@"
+            <p style=""margin:0 0 8px;color:{DarkText};font-size:16px;"">Poštovani,</p>
+            <p style=""margin:0 0 20px;color:{MutedText};font-size:14px;line-height:1.6;"">
+              Vaša pretplata za salon <strong>{tenantName}</strong> ističe za <strong>{daysRemaining}</strong> dan(a).
+            </p>
+            <div style=""background-color:#FFF3E0;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid {WarningColor};"">
+              <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"">
+                {DetailRow("📅 Datum isteka", expirationDate)}
+                {DetailRow("⏳ Preostalo dana", daysRemaining.ToString())}
+              </table>
+            </div>
+            <p style=""margin:0 0 20px;color:{MutedText};font-size:14px;line-height:1.6;"">
+              Nakon isteka pretplate, pristup sistemu će biti onemogućen. Kontaktirajte podršku za produženje pretplate.
+            </p>
+            <div style=""background-color:{LightBg};border-radius:8px;padding:16px;margin:20px 0;"">
+              <p style=""margin:0;color:{DarkText};font-size:13px;line-height:1.5;"">
+                💡 Vaši podaci ostaju sačuvani i biće dostupni nakon obnove pretplate.
+              </p>
+            </div>";
+
+        return BaseLayout("Pretplata uskoro ističe", WarningColor, "⚠️", body, tenantName);
+    }
+
+    public static string SubscriptionExpired(string tenantName)
+    {
+        var body = $@"
+            <p style=""margin:0 0 8px;color:{DarkText};font-size:16px;"">Poštovani,</p>
+            <p style=""margin:0 0 20px;color:{MutedText};font-size:14px;line-height:1.6;"">
+              Vaša pretplata za salon <strong>{tenantName}</strong> je istekla. Pristup sistemu je trenutno onemogućen.
+            </p>
+            <div style=""background-color:#FFEBEE;border-radius:8px;padding:20px;margin:20px 0;border-left:4px solid {DangerColor};"">
+              <p style=""margin:0;color:{DarkText};font-size:14px;line-height:1.5;"">
+                🔒 Vaš nalog je deaktiviran. Da biste nastavili sa korišćenjem SalonPro sistema, potrebno je da obnovite pretplatu.
+              </p>
+            </div>
+            <p style=""margin:0 0 20px;color:{MutedText};font-size:14px;line-height:1.6;"">
+              Kontaktirajte nas za obnovu pretplate. Vaši podaci su sačuvani i biće ponovo dostupni nakon aktivacije.
+            </p>
+            <div style=""background-color:{LightBg};border-radius:8px;padding:16px;margin:20px 0;"">
+              <p style=""margin:0;color:{DarkText};font-size:13px;line-height:1.5;"">
+                📧 Za podršku: salonbookpro@gmail.com
+              </p>
+            </div>";
+
+        return BaseLayout("Pretplata je istekla", DangerColor, "🔒", body, tenantName);
+    }
 }
