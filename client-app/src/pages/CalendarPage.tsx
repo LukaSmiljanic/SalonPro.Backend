@@ -113,6 +113,16 @@ export const CalendarPage: React.FC = () => {
     [dayStart, dayEnd]
   );
 
+  // Build a Set of non-working day-of-week indices (0=Sunday)
+  const nonWorkingDays = useMemo(() => {
+    if (!workingHoursData || workingHoursData.length === 0) return new Set<number>();
+    return new Set(
+      workingHoursData.filter(d => !d.isWorkingDay).map(d => d.dayOfWeek)
+    );
+  }, [workingHoursData]);
+
+  const isDayOff = (date: Date) => nonWorkingDays.has(date.getDay());
+
   const appointments = appointmentsData?.items ?? [];
 
   const cancelMutation = useMutation({
@@ -371,20 +381,24 @@ export const CalendarPage: React.FC = () => {
           {/* Day headers */}
           <div className="calendar-grid border-b border-divider sticky top-0 bg-surface z-10">
             <div className="" /> {/* time col spacer */}
-            {weekDays.map(day => (
-              <div
-                key={day.toISOString()}
-                className={`px-2 py-2 text-center border-l border-divider
-                  ${isToday(day) ? 'bg-primary-highlight' : ''}`}
-              >
-                <p className="text-[11px] text-text-faint uppercase tracking-wide">
-                  {format(day, 'EEE', { locale: srLatn })}
-                </p>
-                <p className={`text-sm font-semibold ${ isToday(day) ? 'text-primary' : 'text-text' }`}>
-                  {format(day, 'd')}
-                </p>
-              </div>
-            ))}
+            {weekDays.map(day => {
+              const off = isDayOff(day);
+              return (
+                <div
+                  key={day.toISOString()}
+                  className={`px-2 py-2 text-center border-l border-divider
+                    ${isToday(day) ? 'bg-primary-highlight' : off ? 'bg-surface-offset/60' : ''}`}
+                >
+                  <p className={`text-[11px] uppercase tracking-wide ${off ? 'text-text-faint/60' : 'text-text-faint'}`}>
+                    {format(day, 'EEE', { locale: srLatn })}
+                  </p>
+                  <p className={`text-sm font-semibold ${isToday(day) ? 'text-primary' : off ? 'text-text-faint/60' : 'text-text'}`}>
+                    {format(day, 'd')}
+                  </p>
+                  {off && <p className="text-[9px] text-text-faint/50 mt-0.5">Neradni dan</p>}
+                </div>
+              );
+            })}
           </div>
 
           {/* Time rows */}
@@ -404,17 +418,24 @@ export const CalendarPage: React.FC = () => {
               </div>
 
               {/* Day columns */}
-              {weekDays.map((day, dayIndex) => (
+              {weekDays.map((day, dayIndex) => {
+                const off = isDayOff(day);
+                return (
                 <div
                   key={day.toISOString()}
-                  className="calendar-day-col border-l border-divider"
+                  className={`calendar-day-col border-l border-divider ${off ? 'bg-surface-offset/30' : ''}`}
+                  style={off ? { backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 10px, rgba(0,0,0,0.02) 10px, rgba(0,0,0,0.02) 11px)' } : undefined}
                 >
                   {/* Hour slots with double-click */}
                   {hours.map(hour => (
                     <div
                       key={hour}
                       className="calendar-slot"
-                      onDoubleClick={() => handleSlotDoubleClick(day, hour)}
+                      onDoubleClick={() => {
+                        if (off) return; // block creating appointments on non-working days
+                        handleSlotDoubleClick(day, hour);
+                      }}
+                      style={off ? { cursor: 'not-allowed' } : undefined}
                     />
                   ))}
 
@@ -488,7 +509,8 @@ export const CalendarPage: React.FC = () => {
                     );
                   })}
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>

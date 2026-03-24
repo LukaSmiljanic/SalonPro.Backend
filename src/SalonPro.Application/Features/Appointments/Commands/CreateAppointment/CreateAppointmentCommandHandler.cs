@@ -52,6 +52,22 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
             throw new NotFoundException("One or more services were not found or are inactive.");
         }
 
+        // Validate against tenant working hours
+        var appointmentDayOfWeek = request.StartTime.DayOfWeek;
+        var tenantWorkingHours = await _unitOfWork.WorkingHours.Query()
+            .Where(wh => wh.TenantId == tenantId && wh.StaffMemberId == null && wh.DayOfWeek == appointmentDayOfWeek)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (tenantWorkingHours != null && !tenantWorkingHours.IsWorkingDay)
+            throw new ValidationException("Nije moguće zakazati termin na neradni dan.");
+
+        if (tenantWorkingHours != null && tenantWorkingHours.IsWorkingDay)
+        {
+            var apptTime = request.StartTime.TimeOfDay;
+            if (apptTime < tenantWorkingHours.StartTime || apptTime >= tenantWorkingHours.EndTime)
+                throw new ValidationException($"Termin mora biti u okviru radnog vremena ({tenantWorkingHours.StartTime:hh\\:mm} - {tenantWorkingHours.EndTime:hh\\:mm}).");
+        }
+
         var totalDuration = services.Sum(s => s.DurationMinutes);
         var totalPrice = services.Sum(s => s.Price);
         var endTime = request.StartTime.AddMinutes(totalDuration);
