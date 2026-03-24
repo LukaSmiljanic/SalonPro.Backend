@@ -1,16 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, setHours, setMinutes } from 'date-fns';
 import { getClients } from '../api/clients';
 import { getStaff } from '../api/staff';
 import { getServices } from '../api/services';
 import { createAppointment } from '../api/appointments';
+import { getWorkingHours } from '../api/settings';
 import type { Client, StaffMember, Service, CreateAppointmentRequest } from '../types';
 import { queryKeys } from '../lib/queryKeys';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Input } from './Input';
 import { LoadingSpinner } from './LoadingSpinner';
+
+/** Build 24h time options in 15-min steps between startHour and endHour */
+function buildTimeSlots(startHour: number, endHour: number): string[] {
+  const slots: string[] = [];
+  for (let h = startHour; h < endHour; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+    }
+  }
+  return slots;
+}
+
+const DEFAULT_TIME_SLOTS = buildTimeSlots(7, 22);
 
 interface CreateAppointmentModalProps {
   isOpen: boolean;
@@ -53,6 +67,28 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     queryFn: () => getServices(),
     enabled: isOpen,
   });
+
+  const { data: workingHoursData } = useQuery({
+    queryKey: queryKeys.settings.workingHours(),
+    queryFn: getWorkingHours,
+    enabled: isOpen,
+  });
+
+  const timeSlots = useMemo(() => {
+    if (!workingHoursData || workingHoursData.length === 0) return DEFAULT_TIME_SLOTS;
+    const workingDays = workingHoursData.filter(d => d.isWorkingDay);
+    if (workingDays.length === 0) return DEFAULT_TIME_SLOTS;
+    const minH = Math.min(...workingDays.map(d => parseInt(d.startTime.slice(0, 2), 10)));
+    const maxH = Math.max(...workingDays.map(d => {
+      const h = parseInt(d.endTime.slice(0, 2), 10);
+      const m = parseInt(d.endTime.slice(3, 5), 10);
+      return m > 0 ? h + 1 : h;
+    }));
+    return buildTimeSlots(
+      isNaN(minH) ? 7 : Math.max(0, minH),
+      isNaN(maxH) ? 22 : Math.min(24, maxH)
+    );
+  }, [workingHoursData]);
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateAppointmentRequest) => createAppointment(payload),
@@ -205,13 +241,19 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
               onChange={e => setDate(e.target.value)}
               required
             />
-            <Input
-              label="Vreme *"
-              type="time"
-              value={time}
-              onChange={e => setTime(e.target.value)}
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-text mb-1">Vreme *</label>
+              <select
+                value={time}
+                onChange={e => setTime(e.target.value)}
+                className="w-full h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3 text-base md:text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
+                required
+              >
+                {timeSlots.map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <Input
