@@ -19,7 +19,7 @@ public class GetBirthdayRemindersQueryHandler : IRequestHandler<GetBirthdayRemin
     public async Task<List<BirthdayReminderDto>> Handle(GetBirthdayRemindersQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant ID is required.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var today = DateTime.UtcNow.Date;
         var days = Math.Max(1, Math.Min(request.Days, 30));

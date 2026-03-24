@@ -21,7 +21,7 @@ public class CreateServiceCommandHandler : IRequestHandler<CreateServiceCommand,
     public async Task<Guid> Handle(CreateServiceCommand request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant context is not set.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var category = await _unitOfWork.ServiceCategories.GetByIdAsync(request.CategoryId, cancellationToken)
             ?? throw new NotFoundException(nameof(ServiceCategory), request.CategoryId);

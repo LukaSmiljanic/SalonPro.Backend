@@ -37,25 +37,25 @@ public class ExceptionHandlingMiddleware
         {
             Application.Common.Exceptions.ValidationException validationEx =>
                 (HttpStatusCode.BadRequest,
-                 "One or more validation errors occurred.",
+                 "Došlo je do greške pri validaciji.",
                  validationEx.Message,
                  (IDictionary<string, string[]>?)validationEx.Errors),
 
             NotFoundException notFoundEx =>
                 (HttpStatusCode.NotFound,
-                 "The specified resource was not found.",
+                 "Traženi resurs nije pronađen.",
                  notFoundEx.Message,
                  (IDictionary<string, string[]>?)null),
 
             UnauthorizedException unauthorizedEx =>
                 (HttpStatusCode.Unauthorized,
-                 "Unauthorized.",
+                 "Neautorizovan pristup.",
                  unauthorizedEx.Message,
                  (IDictionary<string, string[]>?)null),
 
             ForbiddenAccessException forbiddenEx =>
                 (HttpStatusCode.Forbidden,
-                 "Forbidden.",
+                 "Pristup zabranjen.",
                  forbiddenEx.Message,
                  (IDictionary<string, string[]>?)null),
 
@@ -80,8 +80,8 @@ public class ExceptionHandlingMiddleware
         _logger.LogError(exception, "An unhandled exception occurred: {Message}", exception.Message);
         return (
             HttpStatusCode.InternalServerError,
-            "An error occurred while processing your request.",
-            "An unexpected error occurred. Please try again later.",
+            "Došlo je do greške prilikom obrade zahteva.",
+            "Neočekivana greška. Pokušajte ponovo.",
             null
         );
     }

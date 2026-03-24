@@ -20,7 +20,7 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
     public async Task<DashboardInsightsDto> Handle(GetDashboardInsightsQuery request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant ID is required.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var now = DateTime.UtcNow;
         var today = now.Date;

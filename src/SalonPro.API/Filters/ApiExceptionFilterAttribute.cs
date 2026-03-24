@@ -51,7 +51,7 @@ public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
         var details = new ValidationProblemDetails(exception.Errors)
         {
             Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-            Title = "One or more validation errors occurred.",
+            Title = "Došlo je do jedne ili više grešaka pri validaciji.",
             Status = StatusCodes.Status400BadRequest,
             Detail = exception.Message
         };
@@ -65,7 +65,7 @@ public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
         var details = new ProblemDetails
         {
             Type = "https://tools.ietf.org/html/rfc7231#section-6.5.4",
-            Title = "The specified resource was not found.",
+            Title = "Traženi resurs nije pronađen.",
             Status = StatusCodes.Status404NotFound,
             Detail = exception.Message
         };
@@ -79,7 +79,7 @@ public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
         var details = new ProblemDetails
         {
             Type = "https://tools.ietf.org/html/rfc7235#section-3.1",
-            Title = "Unauthorized.",
+            Title = "Neautorizovan pristup.",
             Status = StatusCodes.Status401Unauthorized,
             Detail = exception.Message
         };
@@ -96,7 +96,7 @@ public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
         var details = new ProblemDetails
         {
             Type = "https://tools.ietf.org/html/rfc7231#section-6.5.3",
-            Title = "Forbidden.",
+            Title = "Zabranjen pristup.",
             Status = StatusCodes.Status403Forbidden,
             Detail = exception.Message
         };
@@ -115,9 +115,9 @@ public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
         var details = new ProblemDetails
         {
             Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1",
-            Title = "An error occurred while processing your request.",
+            Title = "Došlo je do greške prilikom obrade zahteva.",
             Status = StatusCodes.Status500InternalServerError,
-            Detail = "An unexpected error occurred. Please try again later."
+            Detail = "Došlo je do neočekivane greške. Molimo pokušajte ponovo kasnije."
         };
 
         context.Result = new ObjectResult(details)

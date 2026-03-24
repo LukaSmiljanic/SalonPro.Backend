@@ -20,7 +20,7 @@ public class CreateStaffMemberCommandHandler : IRequestHandler<CreateStaffMember
     public async Task<Guid> Handle(CreateStaffMemberCommand request, CancellationToken cancellationToken)
     {
         var tenantId = _currentTenantService.TenantId
-            ?? throw new InvalidOperationException("Tenant context is not set.");
+            ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
 
         var staffMember = new StaffMember
         {

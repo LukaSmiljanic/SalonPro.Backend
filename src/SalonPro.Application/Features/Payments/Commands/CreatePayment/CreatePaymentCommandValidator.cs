@@ -7,24 +7,24 @@ public class CreatePaymentCommandValidator : AbstractValidator<CreatePaymentComm
     public CreatePaymentCommandValidator()
     {
         RuleFor(x => x.TenantId)
-            .NotEmpty().WithMessage("TenantId is required.");
+            .NotEmpty().WithMessage("ID salona je obavezan.");
 
         RuleFor(x => x.Amount)
-            .GreaterThan(0).WithMessage("Amount must be greater than 0.");
+            .GreaterThan(0).WithMessage("Iznos mora biti veći od 0.");
 
         RuleFor(x => x.Currency)
-            .NotEmpty().WithMessage("Currency is required.")
-            .MaximumLength(10).WithMessage("Currency must not exceed 10 characters.");
+            .NotEmpty().WithMessage("Valuta je obavezna.")
+            .MaximumLength(10).WithMessage("Valuta ne sme biti duža od 10 karaktera.");
 
         RuleFor(x => x.PeriodStart)
-            .NotEmpty().WithMessage("PeriodStart is required.");
+            .NotEmpty().WithMessage("Početak perioda je obavezan.");
 
         RuleFor(x => x.PeriodEnd)
-            .NotEmpty().WithMessage("PeriodEnd is required.")
-            .GreaterThan(x => x.PeriodStart).WithMessage("PeriodEnd must be after PeriodStart.");
+            .NotEmpty().WithMessage("Kraj perioda je obavezan.")
+            .GreaterThan(x => x.PeriodStart).WithMessage("Kraj perioda mora biti posle početka.");
 
         RuleFor(x => x.Notes)
-            .MaximumLength(2000).WithMessage("Notes must not exceed 2000 characters.")
+            .MaximumLength(2000).WithMessage("Napomene ne smeju biti duže od 2000 karaktera.")
             .When(x => x.Notes != null);
     }
 }

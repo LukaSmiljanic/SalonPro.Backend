@@ -75,9 +75,9 @@ public class TenantResolutionMiddleware
         await context.Response.WriteAsJsonAsync(new
         {
             type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-            title = "Tenant ID is required.",
+            title = "ID zakupca je obavezan.",
             status = 400,
-            detail = "Provide a valid tenant ID via the X-Tenant-Id header or ensure your JWT token contains a tenant_id claim."
+            detail = "Navedite validan ID zakupca putem X-Tenant-Id zaglavlja ili se uverite da vaš JWT token sadrži tenant_id."
         });
     }
 
