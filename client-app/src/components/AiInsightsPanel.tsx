@@ -74,7 +74,7 @@ export const AiInsightsPanel: React.FC = () => {
             <p className="text-sm font-semibold text-text">
               {data.weekRevenueChangePercent > 0 ? '+' : ''}{data.weekRevenueChangePercent}%
             </p>
-            <p className="text-[10px] text-text-faint">Prihod W/W</p>
+            <p className="text-[10px] text-text-faint">Prihod ned/ned</p>
           </div>
         </div>
       )}

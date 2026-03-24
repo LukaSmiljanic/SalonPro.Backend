@@ -90,7 +90,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = fal
               onClick={() => navigate(targetRoute)}
               className="mt-2 text-xs font-medium text-[#5B3A8C] hover:text-[#4A2E73] transition-colors"
             >
-              {insight.actionLabel} \u2192
+              {insight.actionLabel} →
             </button>
           )}
         </div>
