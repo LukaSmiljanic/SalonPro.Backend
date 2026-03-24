@@ -29,7 +29,7 @@ export const TopNav: React.FC = () => {
   const { user, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isSuperAdmin = user?.role === 'SuperAdmin';
-  const navItems = isSuperAdmin ? superAdminNavItems : salonNavItems;
+  const navItems = isSuperAdmin ? [...superAdminNavItems, ...salonNavItems] : salonNavItems;
 
   return (
     <header className="sticky top-0 z-40 bg-surface border-b border-border">
