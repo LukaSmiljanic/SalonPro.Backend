@@ -39,11 +39,11 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
             else
             {
                 // Treat as slug — look up tenant by slug
-                var tenant = await _unitOfWork.Tenants.Query()
+                var tenantBySlug = await _unitOfWork.Tenants.Query()
                     .Where(t => t.Slug == request.TenantId.ToLower())
                     .FirstOrDefaultAsync(cancellationToken);
-                if (tenant != null)
-                    resolvedTenantId = tenant.Id;
+                if (tenantBySlug != null)
+                    resolvedTenantId = tenantBySlug.Id;
             }
         }
 
