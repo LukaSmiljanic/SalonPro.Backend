@@ -38,13 +38,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (exp && exp * 1000 < Date.now()) {
           clearStoredAuth();
         } else {
+          // Helper: .NET JWT uses full URI claim names, so check both short and long forms
+          const claim = (short: string, uri: string) =>
+            (payload[short] ?? payload[uri] ?? '') as string;
+
           setUser({
-            id: payload['sub'] as string ?? '',
-            email: payload['email'] as string ?? '',
-            name: payload['name'] as string ?? '',
-            role: payload['role'] as string ?? '',
+            id: claim('sub', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'),
+            email: claim('email', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress'),
+            name: claim('name', 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'),
+            role: claim('role', 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'),
             tenantId,
-            tenantName: payload['tenantName'] as string ?? '',
+            tenantName: claim('tenantName', 'tenant_name'),
           });
         }
       } catch {
