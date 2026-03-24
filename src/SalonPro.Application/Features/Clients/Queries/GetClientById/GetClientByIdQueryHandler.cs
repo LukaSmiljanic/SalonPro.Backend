@@ -11,10 +11,12 @@ namespace SalonPro.Application.Features.Clients.Queries.GetClientById;
 public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, ClientDetailDto>
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ICurrentTenantService _currentTenantService;
 
-    public GetClientByIdQueryHandler(IUnitOfWork unitOfWork)
+    public GetClientByIdQueryHandler(IUnitOfWork unitOfWork, ICurrentTenantService currentTenantService)
     {
         _unitOfWork = unitOfWork;
+        _currentTenantService = currentTenantService;
     }
 
     public async Task<ClientDetailDto> Handle(GetClientByIdQuery request, CancellationToken cancellationToken)
@@ -51,17 +53,8 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             .Select(n => new ClientNoteDto(n.Id, n.Content, n.CreatedAt, n.CreatedBy))
             .ToList();
 
-        // Compute loyalty info
-        var (tier, benefit) = GetLoyaltyTier(totalVisits);
-        var (nextMilestone, visitsUntil, nextBenefit) = GetNextMilestone(totalVisits);
-        var loyalty = new ClientLoyaltyDto(
-            totalVisits,
-            tier.ToString(),
-            benefit,
-            nextMilestone,
-            visitsUntil,
-            nextBenefit
-        );
+        // Compute loyalty info using tenant config from DB
+        var loyalty = await BuildLoyaltyFromConfig(totalVisits, cancellationToken);
 
         return new ClientDetailDto(
             client.Id,
@@ -79,6 +72,80 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             visitHistory,
             notes,
             loyalty
+        );
+    }
+
+    private async Task<ClientLoyaltyDto> BuildLoyaltyFromConfig(int totalVisits, CancellationToken cancellationToken)
+    {
+        // Try to load tenant-specific loyalty config from DB
+        var tenantId = _currentTenantService.TenantId;
+        if (tenantId.HasValue)
+        {
+            var configs = await _unitOfWork.LoyaltyConfigs.Query()
+                .Where(lc => lc.TenantId == tenantId.Value)
+                .OrderBy(lc => lc.MinVisits)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            if (configs.Count > 0)
+            {
+                var tiers = configs.Select(c => (c.MinVisits, c.TierName, c.Benefit)).ToList();
+                return BuildLoyaltyDto(totalVisits, tiers);
+            }
+        }
+
+        // Fallback to hardcoded defaults
+        var (tier, benefit) = GetLoyaltyTier(totalVisits);
+        var (nextMilestone, visitsUntil, nextBenefit) = GetNextMilestone(totalVisits);
+
+        return new ClientLoyaltyDto(
+            totalVisits,
+            tier.ToString(),
+            benefit,
+            nextMilestone,
+            visitsUntil,
+            nextBenefit
+        );
+    }
+
+    private static ClientLoyaltyDto BuildLoyaltyDto(
+        int totalVisits,
+        List<(int MinVisits, string TierName, string Benefit)> tiers)
+    {
+        string currentTierName = "None";
+        string? currentBenefit = null;
+
+        foreach (var tier in tiers)
+        {
+            if (totalVisits >= tier.MinVisits)
+            {
+                currentTierName = tier.TierName;
+                currentBenefit = tier.Benefit;
+            }
+        }
+
+        int? nextMilestone = null;
+        int visitsUntil = 0;
+        string? nextBenefit = null;
+
+        foreach (var tier in tiers)
+        {
+            if (totalVisits < tier.MinVisits)
+            {
+                nextMilestone = tier.MinVisits;
+                visitsUntil = tier.MinVisits - totalVisits;
+                nextBenefit = tier.Benefit;
+                break;
+            }
+        }
+
+        return new ClientLoyaltyDto(
+            totalVisits,
+            currentTierName,
+            currentBenefit,
+            nextMilestone,
+            visitsUntil,
+            nextBenefit
         );
     }
 
