@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -183,19 +184,32 @@ const TenantActions: React.FC<{
   onExtend: (tenant: TenantInfo) => void;
 }> = ({ tenant, onExtend }) => {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.right - 180 });
+    }
+  }, [open]);
 
   return (
-    <div className="relative">
+    <>
       <button
+        ref={btnRef}
         onClick={() => setOpen(v => !v)}
         className="p-1.5 rounded-md hover:bg-surface-2 text-text-faint hover:text-text transition-colors"
       >
         <MoreVertical size={15} />
       </button>
-      {open && (
+      {open && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[180px]">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[9999] bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[180px]"
+            style={{ top: pos.top, left: Math.max(8, pos.left) }}
+          >
             <button
               onClick={() => { onExtend(tenant); setOpen(false); }}
               className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-surface-2 text-text transition-colors"
@@ -204,9 +218,10 @@ const TenantActions: React.FC<{
               Produži pretplatu
             </button>
           </div>
-        </>
+        </>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 

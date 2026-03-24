@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
@@ -68,20 +69,33 @@ const StatusDropdown: React.FC<{
   isLoading: boolean;
 }> = ({ current, onSelect, isLoading }) => {
   const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.right - 160 });
+    }
+  }, [open]);
 
   return (
-    <div className="relative">
+    <>
       <button
+        ref={btnRef}
         onClick={() => setOpen(v => !v)}
         disabled={isLoading}
         className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors disabled:opacity-50"
       >
         Promeni <ChevronDown size={12} className={open ? 'rotate-180 transition-transform' : 'transition-transform'} />
       </button>
-      {open && (
+      {open && createPortal(
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[160px]">
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[9999] bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[160px]"
+            style={{ top: pos.top, left: Math.max(8, pos.left) }}
+          >
             {statusOptions.map(s => (
               <button
                 key={s}
@@ -98,9 +112,10 @@ const StatusDropdown: React.FC<{
               </button>
             ))}
           </div>
-        </>
+        </>,
+        document.body
       )}
-    </div>
+    </>
   );
 };
 
