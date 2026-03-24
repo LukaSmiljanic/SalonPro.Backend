@@ -81,7 +81,7 @@ const StatusDropdown: React.FC<{
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-1 z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[140px]">
+          <div className="absolute right-0 top-full mt-1 z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[160px]">
             {statusOptions.map(s => (
               <button
                 key={s}
@@ -91,7 +91,10 @@ const StatusDropdown: React.FC<{
                   ${s === current ? 'bg-surface-2 text-text-faint cursor-default' : 'hover:bg-surface-2 text-text'}`}
               >
                 {statusConfig[s].icon}
-                {statusConfig[s].label}
+                <span className="flex-1">{statusConfig[s].label}</span>
+                {s === 'Paid' && s !== current && (
+                  <span className="text-[10px] text-emerald-500 font-medium">+ pretplata</span>
+                )}
               </button>
             ))}
           </div>
@@ -100,6 +103,12 @@ const StatusDropdown: React.FC<{
     </div>
   );
 };
+
+// ── Select ────────────────────────────────────────────────────────────────────
+
+const selectClass = `w-full h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3
+  text-base md:text-sm text-text
+  focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive`;
 
 // ── Create Payment Modal ──────────────────────────────────────────────────────
 
@@ -116,6 +125,8 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
   const [currency, setCurrency] = useState('RSD');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
+  const [status, setStatus] = useState<PaymentStatus>('Pending');
+  const [paidBy, setPaidBy] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -123,6 +134,7 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
     mutationFn: createPayment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all });
       resetAndClose();
     },
     onError: (err: unknown) => {
@@ -134,7 +146,20 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
   const resetAndClose = () => {
     setTenantId(''); setAmount(''); setCurrency('RSD');
     setPeriodStart(''); setPeriodEnd(''); setNotes('');
+    setStatus('Pending'); setPaidBy('');
     setError(null); onClose();
+  };
+
+  // Auto-fill period dates when tenant is selected
+  const handleTenantChange = (id: string) => {
+    setTenantId(id);
+    if (id && !periodStart) {
+      const today = new Date();
+      const nextMonth = new Date(today);
+      nextMonth.setMonth(nextMonth.getMonth() + 1);
+      setPeriodStart(today.toISOString().split('T')[0]);
+      setPeriodEnd(nextMonth.toISOString().split('T')[0]);
+    }
   };
 
   const handleSubmit = () => {
@@ -149,7 +174,9 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
       currency,
       periodStart: new Date(periodStart).toISOString(),
       periodEnd: new Date(periodEnd).toISOString(),
+      status,
       notes: notes || undefined,
+      paidBy: paidBy || undefined,
     });
   };
 
@@ -165,10 +192,8 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
           <label className="block text-xs font-medium text-text-muted mb-1">Salon</label>
           <select
             value={tenantId}
-            onChange={e => setTenantId(e.target.value)}
-            className="w-full h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3
-              text-base md:text-sm text-text
-              focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
+            onChange={e => handleTenantChange(e.target.value)}
+            className={selectClass}
           >
             <option value="">Izaberite salon...</option>
             {tenants.map(t => (
@@ -187,7 +212,29 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
           <Input label="Period do" type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
         </div>
 
-        <Input label="Napomene" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcionalno..." />
+        {/* Status select */}
+        <div>
+          <label className="block text-xs font-medium text-text-muted mb-1">Status</label>
+          <select
+            value={status}
+            onChange={e => setStatus(e.target.value as PaymentStatus)}
+            className={selectClass}
+          >
+            {statusOptions.map(s => (
+              <option key={s} value={s}>{statusConfig[s].label}</option>
+            ))}
+          </select>
+          {status === 'Paid' && (
+            <p className="text-[11px] text-emerald-600 mt-1">
+              Pretplata salona biće automatski produžena do datuma perioda.
+            </p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Uplatio/la" value={paidBy} onChange={e => setPaidBy(e.target.value)} placeholder="Ime uplatnika" />
+          <Input label="Napomene" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Opcionalno..." />
+        </div>
 
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="secondary" onClick={resetAndClose}>Otkaži</Button>
@@ -205,11 +252,12 @@ export const PaymentsPage: React.FC = () => {
   const [filterYear, setFilterYear] = useState<number | undefined>(currentYear);
   const [filterMonth, setFilterMonth] = useState<number | undefined>(undefined);
   const [filterStatus, setFilterStatus] = useState<PaymentStatus | undefined>(undefined);
+  const [filterTenant, setFilterTenant] = useState<string | undefined>(undefined);
   const [showCreate, setShowCreate] = useState(false);
 
   const paymentsQuery = useQuery({
     queryKey: queryKeys.payments.list({ year: filterYear, month: filterMonth, status: filterStatus }),
-    queryFn: () => getPayments({ year: filterYear, month: filterMonth, status: filterStatus }),
+    queryFn: () => getPayments({ tenantId: filterTenant, year: filterYear, month: filterMonth, status: filterStatus }),
   });
 
   const summaryQuery = useQuery({
@@ -226,6 +274,7 @@ export const PaymentsPage: React.FC = () => {
     mutationFn: updatePaymentStatus,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all });
     },
   });
 
@@ -311,13 +360,22 @@ export const PaymentsPage: React.FC = () => {
       <div className="card card-padded">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
+            <label className="text-xs text-text-muted shrink-0">Salon</label>
+            <select
+              value={filterTenant ?? ''}
+              onChange={e => setFilterTenant(e.target.value || undefined)}
+              className={`${selectClass} w-auto min-w-[140px]`}
+            >
+              <option value="">Svi</option>
+              {allTenants.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
             <label className="text-xs text-text-muted shrink-0">Godina</label>
             <select
               value={filterYear ?? ''}
               onChange={e => setFilterYear(e.target.value ? parseInt(e.target.value) : undefined)}
-              className="h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3
-                text-base md:text-sm text-text
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
+              className={`${selectClass} w-auto`}
             >
               <option value="">Sve</option>
               {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
@@ -328,9 +386,7 @@ export const PaymentsPage: React.FC = () => {
             <select
               value={filterMonth ?? ''}
               onChange={e => setFilterMonth(e.target.value ? parseInt(e.target.value) : undefined)}
-              className="h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3
-                text-base md:text-sm text-text
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
+              className={`${selectClass} w-auto`}
             >
               <option value="">Svi</option>
               {monthNames.map((name, i) => <option key={i} value={i + 1}>{name}</option>)}
@@ -341,15 +397,18 @@ export const PaymentsPage: React.FC = () => {
             <select
               value={filterStatus ?? ''}
               onChange={e => setFilterStatus(e.target.value ? e.target.value as PaymentStatus : undefined)}
-              className="h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3
-                text-base md:text-sm text-text
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
+              className={`${selectClass} w-auto`}
             >
               <option value="">Svi</option>
               {statusOptions.map(s => <option key={s} value={s}>{statusConfig[s].label}</option>)}
             </select>
           </div>
         </div>
+      </div>
+
+      {/* Info banner */}
+      <div className="bg-primary/5 border border-primary/15 rounded-lg px-4 py-3 text-xs text-text-muted">
+        <strong className="text-text">Kako funkcioniše:</strong> Kada postavite status plaćanja na &quot;Plaćeno&quot;, pretplata salona se automatski produžava do datuma koji ste definisali kao kraj perioda.
       </div>
 
       {/* Payments Table */}
@@ -383,7 +442,7 @@ export const PaymentsPage: React.FC = () => {
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Iznos</th>
                   <th className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden sm:table-cell">Period</th>
                   <th className="text-center py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Status</th>
-                  <th className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden md:table-cell">Napomene</th>
+                  <th className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden md:table-cell">Info</th>
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Akcije</th>
                 </tr>
               </thead>
@@ -403,8 +462,21 @@ export const PaymentsPage: React.FC = () => {
                     <td className="py-3 px-3 text-center">
                       <StatusBadge status={payment.status} />
                     </td>
-                    <td className="py-3 px-3 text-text-faint text-xs hidden md:table-cell max-w-[200px] truncate">
-                      {payment.notes || '—'}
+                    <td className="py-3 px-3 hidden md:table-cell">
+                      <div className="text-xs space-y-0.5">
+                        {payment.paidBy && (
+                          <p className="text-text-muted">Uplatio: <span className="text-text">{payment.paidBy}</span></p>
+                        )}
+                        {payment.paidAt && (
+                          <p className="text-text-faint">Plaćeno: {formatDate(payment.paidAt)}</p>
+                        )}
+                        {payment.notes && (
+                          <p className="text-text-faint truncate max-w-[180px]" title={payment.notes}>{payment.notes}</p>
+                        )}
+                        {!payment.paidBy && !payment.paidAt && !payment.notes && (
+                          <span className="text-text-faint">—</span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-3 text-right">
                       <div className="flex items-center justify-end gap-3">

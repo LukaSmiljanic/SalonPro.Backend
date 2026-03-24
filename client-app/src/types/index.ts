@@ -330,12 +330,15 @@ export interface CreatePaymentRequest {
   currency: string;
   periodStart: string;
   periodEnd: string;
+  status?: PaymentStatus;
   notes?: string;
+  paidBy?: string;
 }
 
 export interface UpdatePaymentStatusRequest {
   id: string;
   status: PaymentStatus;
+  notes?: string;
   paidBy?: string;
 }
 

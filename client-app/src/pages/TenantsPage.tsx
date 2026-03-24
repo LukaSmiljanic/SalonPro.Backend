@@ -1,17 +1,19 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
   Building2, RefreshCw, CheckCircle2, Clock, AlertTriangle, XCircle,
-  Users, UserCheck, Search
+  Users, UserCheck, Search, CalendarPlus, CreditCard, MoreVertical
 } from 'lucide-react';
-import { getTenants } from '../api/tenants';
+import { getTenants, extendSubscription } from '../api/tenants';
 import type { TenantInfo } from '../types';
 import { queryKeys } from '../lib/queryKeys';
 import { KpiCard } from '../components/KpiCard';
 import { Button } from '../components/Button';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { Modal } from '../components/Modal';
+import { Input } from '../components/Input';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,10 +45,176 @@ const SubStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   );
 };
 
+// ── Quick extend periods ──────────────────────────────────────────────────────
+
+const extendOptions = [
+  { label: '7 dana', days: 7 },
+  { label: '30 dana', days: 30 },
+  { label: '90 dana', days: 90 },
+  { label: '365 dana', days: 365 },
+];
+
+// ── Extend Subscription Modal ────────────────────────────────────────────────
+
+interface ExtendModalProps {
+  open: boolean;
+  tenant: TenantInfo | null;
+  onClose: () => void;
+}
+
+const ExtendSubscriptionModal: React.FC<ExtendModalProps> = ({ open, tenant, onClose }) => {
+  const queryClient = useQueryClient();
+  const [customDays, setCustomDays] = useState('');
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: extendSubscription,
+    onSuccess: (data) => {
+      setResult(data.message);
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.payments.all });
+    },
+    onError: (err: unknown) => {
+      const msg = (err as any)?.response?.data?.message ?? 'Greška pri produženju pretplate.';
+      setError(typeof msg === 'string' ? msg : 'Greška pri produženju pretplate.');
+    },
+  });
+
+  const handleExtend = (days: number) => {
+    if (!tenant) return;
+    setError(null);
+    setResult(null);
+    mutation.mutate({ tenantId: tenant.id, days });
+  };
+
+  const handleClose = () => {
+    setCustomDays('');
+    setResult(null);
+    setError(null);
+    onClose();
+  };
+
+  if (!tenant) return null;
+
+  return (
+    <Modal isOpen={open} title="Produži pretplatu" onClose={handleClose}>
+      <div className="space-y-4">
+        {/* Tenant info */}
+        <div className="bg-surface-2 rounded-lg p-3">
+          <p className="font-medium text-text text-sm">{tenant.name}</p>
+          <p className="text-xs text-text-faint mt-0.5">{tenant.slug} {tenant.email ? `· ${tenant.email}` : ''}</p>
+          <div className="flex items-center gap-3 mt-2">
+            <SubStatusBadge status={tenant.subscriptionStatus} />
+            {tenant.subscriptionEndDate && (
+              <span className="text-xs text-text-muted">
+                Ističe: {formatDateShort(tenant.subscriptionEndDate)}
+                {tenant.daysRemaining != null && tenant.daysRemaining > 0 && (
+                  <span className="text-text-faint"> (još {tenant.daysRemaining} dana)</span>
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {error && (
+          <div className="p-3 bg-error-bg border border-error/20 rounded-lg text-sm text-error">{error}</div>
+        )}
+
+        {result && (
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm text-emerald-700">{result}</div>
+        )}
+
+        {/* Quick extend buttons */}
+        <div>
+          <label className="block text-xs font-medium text-text-muted mb-2">Brzo produženje</label>
+          <div className="grid grid-cols-2 gap-2">
+            {extendOptions.map(opt => (
+              <button
+                key={opt.days}
+                onClick={() => handleExtend(opt.days)}
+                disabled={mutation.isPending}
+                className="flex items-center justify-center gap-2 px-3 py-2.5 bg-surface border border-border rounded-lg
+                  text-sm font-medium text-text hover:border-primary hover:bg-primary/5
+                  transition-colors disabled:opacity-50"
+              >
+                <CalendarPlus size={14} className="text-primary" />
+                + {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom days */}
+        <div>
+          <label className="block text-xs font-medium text-text-muted mb-1">Ili unesite broj dana</label>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              value={customDays}
+              onChange={e => setCustomDays(e.target.value)}
+              placeholder="npr. 45"
+            />
+            <Button
+              onClick={() => {
+                const days = parseInt(customDays);
+                if (days > 0) handleExtend(days);
+              }}
+              disabled={!customDays || parseInt(customDays) <= 0}
+              loading={mutation.isPending}
+            >
+              Produži
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex justify-end pt-2">
+          <Button variant="secondary" onClick={handleClose}>Zatvori</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+// ── Action Menu ──────────────────────────────────────────────────────────────
+
+const TenantActions: React.FC<{
+  tenant: TenantInfo;
+  onExtend: (tenant: TenantInfo) => void;
+}> = ({ tenant, onExtend }) => {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="p-1.5 rounded-md hover:bg-surface-2 text-text-faint hover:text-text transition-colors"
+      >
+        <MoreVertical size={15} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 bg-surface border border-border rounded-lg shadow-xl py-1 min-w-[180px]">
+            <button
+              onClick={() => { onExtend(tenant); setOpen(false); }}
+              className="w-full text-left px-3 py-2 text-xs flex items-center gap-2 hover:bg-surface-2 text-text transition-colors"
+            >
+              <CalendarPlus size={13} className="text-primary" />
+              Produži pretplatu
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export const TenantsPage: React.FC = () => {
   const [search, setSearch] = useState('');
+  const [extendTenant, setExtendTenant] = useState<TenantInfo | null>(null);
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: queryKeys.tenants.list(),
@@ -137,6 +305,7 @@ export const TenantsPage: React.FC = () => {
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden md:table-cell">Klijenti</th>
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Poslednji login</th>
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden lg:table-cell">Registrovan</th>
+                  <th className="w-10 py-2 px-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -148,7 +317,7 @@ export const TenantsPage: React.FC = () => {
                     <td className="py-3 px-3">
                       <div>
                         <p className="font-medium text-text">{tenant.name}</p>
-                        <p className="text-xs text-text-faint">{tenant.slug}{tenant.city ? ` · ${tenant.city}` : ''}</p>
+                        <p className="text-xs text-text-faint">{tenant.slug}{tenant.city ? ` · ${tenant.city}` : ''}{tenant.email ? ` · ${tenant.email}` : ''}</p>
                       </div>
                     </td>
                     <td className="py-3 px-3 text-center">
@@ -159,7 +328,7 @@ export const TenantsPage: React.FC = () => {
                         <span>
                           {formatDateShort(tenant.subscriptionEndDate)}
                           {tenant.daysRemaining !== undefined && tenant.daysRemaining !== null && (
-                            <span className={`block text-[11px] ${tenant.daysRemaining <= 7 ? 'text-red-500' : 'text-text-faint'}`}>
+                            <span className={`block text-[11px] ${tenant.daysRemaining <= 7 ? 'text-red-500 font-medium' : 'text-text-faint'}`}>
                               {tenant.daysRemaining > 0 ? `još ${tenant.daysRemaining} dana` : 'isteklo'}
                             </span>
                           )}
@@ -182,6 +351,12 @@ export const TenantsPage: React.FC = () => {
                     <td className="py-3 px-3 text-right text-text-faint tabular-nums hidden lg:table-cell whitespace-nowrap">
                       {formatDateShort(tenant.createdAt)}
                     </td>
+                    <td className="py-3 px-1">
+                      <TenantActions
+                        tenant={tenant}
+                        onExtend={setExtendTenant}
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -189,6 +364,13 @@ export const TenantsPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Extend Subscription Modal */}
+      <ExtendSubscriptionModal
+        open={!!extendTenant}
+        tenant={extendTenant}
+        onClose={() => setExtendTenant(null)}
+      />
     </div>
   );
 };
