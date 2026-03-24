@@ -412,7 +412,7 @@ export const CalendarPage: React.FC = () => {
               <div className="calendar-time-col">
                 {hours.map(hour => (
                   <div key={hour} className="calendar-time-label">
-                    {hour}:00
+                    {String(hour).padStart(2, '0')}:00
                   </div>
                 ))}
               </div>
