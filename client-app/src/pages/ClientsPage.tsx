@@ -91,7 +91,7 @@ export const ClientsPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateClientRequest> }) => updateClient(id, data),
+    mutationFn: ({ id, data }: { id: string; data: Partial<CreateClientRequest> & { isVip?: boolean; tags?: string } }) => updateClient(id, data),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
       if (selectedClient?.id === updated.id) setSelectedClient(updated);
