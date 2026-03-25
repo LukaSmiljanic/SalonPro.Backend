@@ -15,8 +15,8 @@ public class Tenant : BaseAuditableEntity
     public string? LogoUrl { get; set; }
     public bool IsActive { get; set; } = true;
     public string? TimeZone { get; set; }
-    public string? Currency { get; set; } = "EUR";
-    public string? Language { get; set; } = "en";
+    public string? Currency { get; set; } = "RSD";
+    public string? Language { get; set; } = "sr";
 
     // Email verification
     public bool EmailVerified { get; set; } = false;

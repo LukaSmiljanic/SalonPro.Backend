@@ -147,15 +147,16 @@ export const StaffPage: React.FC = () => {
 
   return (
     <div className="container-main py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold text-display text-text">Zaposleni</h1>
-          <p className="text-xs text-text-faint mt-0.5">
+          <p className="text-xs text-text-faint mt-0.5 hidden sm:block">
             Osoblje salona — dodajte, izmenite ili uklonite zaposlene
           </p>
         </div>
-        <Button size="sm" icon={<Plus size={13} />} onClick={openNewModal}>
-          Dodaj zaposlenog
+        <Button size="sm" icon={<Plus size={13} />} onClick={openNewModal} className="shrink-0">
+          <span className="hidden sm:inline">Dodaj zaposlenog</span>
+          <span className="sm:hidden">Dodaj</span>
         </Button>
       </div>
 
@@ -210,15 +211,15 @@ export const StaffPage: React.FC = () => {
                     {s.role && (
                       <p className="text-xs text-text-muted">{s.role}</p>
                     )}
-                    <div className="flex items-center gap-3 mt-0.5 text-xs text-text-faint">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5 text-xs text-text-faint">
                       {s.email && (
-                        <span className="flex items-center gap-1">
-                          <Mail size={10} /> {s.email}
+                        <span className="flex items-center gap-1 truncate max-w-[180px] sm:max-w-none">
+                          <Mail size={10} className="shrink-0" /> <span className="truncate">{s.email}</span>
                         </span>
                       )}
                       {s.phone && (
                         <span className="flex items-center gap-1">
-                          <Phone size={10} /> {s.phone}
+                          <Phone size={10} className="shrink-0" /> {s.phone}
                         </span>
                       )}
                     </div>
@@ -272,7 +273,7 @@ export const StaffPage: React.FC = () => {
               {formError}
             </div>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               label="Ime"
               value={form.firstName}

@@ -56,7 +56,7 @@ const StaffRevenueTable: React.FC<StaffTableProps> = ({ data }) => {
             <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">
               Termina
             </th>
-            <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">
+            <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden sm:table-cell">
               Prosek
             </th>
           </tr>
@@ -89,7 +89,7 @@ const StaffRevenueTable: React.FC<StaffTableProps> = ({ data }) => {
                 <td className="py-3 px-3 text-right text-text-muted tabular-nums">
                   {row.appointmentCount}
                 </td>
-                <td className="py-3 px-3 text-right text-text-faint tabular-nums">
+                <td className="py-3 px-3 text-right text-text-faint tabular-nums hidden sm:table-cell">
                   {formatCurrency(row.averagePerAppointment)}
                 </td>
               </tr>

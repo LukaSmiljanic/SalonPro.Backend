@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using SalonPro.API.BackgroundServices;
 using SalonPro.API.Filters;
@@ -105,6 +106,10 @@ using (var scope = app.Services.CreateScope())
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
         await DatabaseSeeder.SeedAsync(context, passwordService);
+
+        // Data-fix: ensure all tenants use RSD currency (was accidentally defaulting to EUR)
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE Tenants SET Currency = 'RSD' WHERE Currency = 'EUR' OR Currency IS NULL");
     }
     catch (Exception ex)
     {

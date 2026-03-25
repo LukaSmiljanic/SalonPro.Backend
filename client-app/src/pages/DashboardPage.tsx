@@ -76,7 +76,7 @@ export const DashboardPage: React.FC = () => {
     <div className="container-main py-6 space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-display text-text">Kontrolna tabla</h1>
           {lastUpdated && (
@@ -90,7 +90,8 @@ export const DashboardPage: React.FC = () => {
             Osveži
           </Button>
           <Button size="sm" icon={<Plus size={13} />} onClick={() => setCreateAppointmentModalOpen(true)}>
-            Novi termin
+            <span className="hidden sm:inline">Novi termin</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>

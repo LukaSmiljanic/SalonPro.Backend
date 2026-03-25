@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import {
-  format, parseISO, startOfWeek, addDays, addWeeks, subWeeks, isToday
+  format, parseISO, startOfWeek, addDays, addWeeks, subWeeks, subDays, isToday, isSameDay
 } from 'date-fns';
 import { srLatn } from 'date-fns/locale';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -45,6 +45,7 @@ export const CalendarPage: React.FC = () => {
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalDate, setCreateModalDate] = useState<Date | undefined>(undefined);
+  const [mobileDay, setMobileDay] = useState(() => new Date()); // single-day for mobile
 
   // ── Drag state ───────────────────────────────────────────────────────────
   // Use a single state object + refs so mouse handlers never read stale values.
@@ -298,19 +299,30 @@ export const CalendarPage: React.FC = () => {
 
       {/* Toolbar */}
       <div className="container-main py-3 flex items-center gap-3 border-b border-divider flex-wrap">
-        {/* Week nav */}
+        {/* Week nav (desktop) / Day nav (mobile) */}
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setWeekStart(w => subWeeks(w, 1))}
+            onClick={() => {
+              setWeekStart(w => subWeeks(w, 1));
+              setMobileDay(d => subDays(d, 1));
+            }}
             className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-all duration-200"
           >
             <ChevronLeft size={16} />
           </button>
-          <span className="text-sm font-medium text-text px-1 min-w-[160px] text-center">
-            {format(weekStart, 'MMM d', { locale: srLatn })} – {format(addDays(weekStart, 6), 'MMM d, yyyy', { locale: srLatn })}
+          <span className="text-sm font-medium text-text px-1 min-w-[100px] md:min-w-[160px] text-center">
+            <span className="hidden md:inline">
+              {format(weekStart, 'MMM d', { locale: srLatn })} – {format(addDays(weekStart, 6), 'MMM d, yyyy', { locale: srLatn })}
+            </span>
+            <span className="md:hidden">
+              {format(mobileDay, 'EEE, d. MMM', { locale: srLatn })}
+            </span>
           </span>
           <button
-            onClick={() => setWeekStart(w => addWeeks(w, 1))}
+            onClick={() => {
+              setWeekStart(w => addWeeks(w, 1));
+              setMobileDay(d => addDays(d, 1));
+            }}
             className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-all duration-200"
           >
             <ChevronRight size={16} />
@@ -322,7 +334,7 @@ export const CalendarPage: React.FC = () => {
           size="sm"
           onClick={() => {
             setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
-            // Scroll to current time
+            setMobileDay(new Date());
             requestAnimationFrame(() => {
               if (gridScrollRef.current) {
                 const now = new Date();
@@ -361,10 +373,11 @@ export const CalendarPage: React.FC = () => {
             icon={<RefreshCw size={13} />}
             onClick={() => queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all })}
           >
-            Osveži
+            <span className="hidden sm:inline">Osveži</span>
           </Button>
           <Button size="sm" icon={<Plus size={13} />} onClick={() => setCreateModalOpen(true)}>
-            Novi termin
+            <span className="hidden sm:inline">Novi termin</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
@@ -377,7 +390,8 @@ export const CalendarPage: React.FC = () => {
 
       {/* Calendar grid */}
       <div className="flex-1 overflow-auto" ref={gridScrollRef}>
-        <div className="min-w-[700px]">
+        {/* Desktop: full week, Mobile: single day */}
+        <div className="hidden md:block min-w-[700px]">
 
           {/* Day headers */}
           <div className="calendar-grid border-b border-divider sticky top-0 bg-surface z-10">
@@ -512,6 +526,73 @@ export const CalendarPage: React.FC = () => {
                 </div>
               );
               })}
+            </div>
+          )}
+        </div>
+
+        {/* ═══ Mobile: single-day view ═══ */}
+        <div className="md:hidden">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <LoadingSpinner />
+            </div>
+          ) : (
+            <div className="grid" style={{ gridTemplateColumns: '50px 1fr' }}>
+              {/* Time labels */}
+              <div className="flex flex-col">
+                {hours.map(hour => (
+                  <div key={hour} className="calendar-time-label text-[11px]">
+                    {String(hour).padStart(2, '0')}:00
+                  </div>
+                ))}
+              </div>
+              {/* Single day column */}
+              <div className="relative border-l border-divider">
+                {hours.map(hour => (
+                  <div
+                    key={hour}
+                    className="calendar-slot"
+                    onDoubleClick={() => {
+                      if (isDayOff(mobileDay)) return;
+                      handleSlotDoubleClick(mobileDay, hour);
+                    }}
+                  />
+                ))}
+
+                {/* Current time indicator */}
+                {isToday(mobileDay) && (() => {
+                  const now = new Date();
+                  const h = now.getHours();
+                  const m = now.getMinutes();
+                  if (h >= dayStart && h < dayEnd) {
+                    const topPx = ((h - dayStart) + m / 60) * HOUR_HEIGHT;
+                    return (
+                      <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: topPx }}>
+                        <div className="flex items-center">
+                          <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                          <div className="flex-1 h-[2px] bg-red-500" />
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* Appointments for this day */}
+                {getAppointmentsForDay(mobileDay).map(appt => {
+                  const { top, height } = getApptPosition(appt);
+                  return (
+                    <AppointmentBlock
+                      key={appt.id}
+                      appointment={appt}
+                      topPx={top}
+                      heightPx={height}
+                      onClick={setSelectedAppt}
+                      onDragStart={handleDragStart}
+                    />
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
