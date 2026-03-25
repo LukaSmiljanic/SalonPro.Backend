@@ -110,6 +110,14 @@ using (var scope = app.Services.CreateScope())
         // Data-fix: ensure all tenants use RSD currency (was accidentally defaulting to EUR)
         await context.Database.ExecuteSqlRawAsync(
             "UPDATE Tenants SET Currency = 'RSD' WHERE Currency = 'EUR' OR Currency IS NULL");
+
+        // Schema-fix: add PasswordResetToken columns to Users if missing
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF COL_LENGTH('Users', 'PasswordResetToken') IS NULL
+            BEGIN
+                ALTER TABLE Users ADD PasswordResetToken NVARCHAR(256) NULL;
+                ALTER TABLE Users ADD PasswordResetTokenExpiry DATETIME2 NULL;
+            END");
     }
     catch (Exception ex)
     {

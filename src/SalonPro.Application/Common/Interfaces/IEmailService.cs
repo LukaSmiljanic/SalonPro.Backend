@@ -8,6 +8,7 @@ public interface IEmailService
     Task SendEmailVerificationAsync(string toEmail, string tenantName, string verificationUrl, CancellationToken cancellationToken = default);
     Task SendSubscriptionWarningAsync(string toEmail, string tenantName, int daysRemaining, DateTime expirationDate, CancellationToken cancellationToken = default);
     Task SendSubscriptionExpiredAsync(string toEmail, string tenantName, CancellationToken cancellationToken = default);
+    Task SendPasswordResetAsync(string toEmail, string resetUrl, CancellationToken cancellationToken = default);
 }
 
 public record AppointmentEmailDto(

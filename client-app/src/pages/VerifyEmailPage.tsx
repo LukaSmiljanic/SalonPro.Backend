@@ -68,7 +68,7 @@ export const VerifyEmailPage: React.FC = () => {
                 </div>
                 <h2 className="text-lg font-semibold text-text mb-2">Nalog aktiviran</h2>
                 <p className="text-sm text-text-muted mb-5">{message}</p>
-                <Button onClick={() => navigate('/', { replace: true })} className="w-full">
+                <Button onClick={() => navigate('/?verified=1', { replace: true })} className="w-full">
                   Prijavite se
                 </Button>
               </>

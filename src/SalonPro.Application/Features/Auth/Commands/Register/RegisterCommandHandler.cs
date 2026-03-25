@@ -99,7 +99,7 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, AuthRespo
         {
             try
             {
-                var baseUrl = _configuration["AppSettings:FrontendUrl"] ?? "https://relaxed-ganache-48eccf.netlify.app";
+                var baseUrl = (_configuration["AppSettings:FrontendUrl"] ?? "https://salonpro.netlify.app").TrimEnd('/');
                 var verificationUrl = $"{baseUrl}/verify-email?token={verificationToken}";
                 await _emailService.SendEmailVerificationAsync(request.Email, tenant.Name, verificationUrl);
             }

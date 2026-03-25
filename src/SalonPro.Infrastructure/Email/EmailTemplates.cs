@@ -247,4 +247,32 @@ public static class EmailTemplates
 
         return BaseLayout("Pretplata je istekla", DangerColor, "🔒", body, tenantName);
     }
+
+    public static string PasswordReset(string resetUrl)
+    {
+        var body = $@"
+            <p style=""margin:0 0 8px;color:{DarkText};font-size:16px;"">Zahtev za resetovanje lozinke</p>
+            <p style=""margin:0 0 24px;color:{MutedText};font-size:14px;line-height:1.6;"">
+              Primili smo zahtev za resetovanje vaše lozinke. Kliknite na dugme ispod da postavite novu lozinku.
+            </p>
+            <div style=""text-align:center;margin:28px 0;"">
+              <a href=""{resetUrl}"" 
+                 style=""display:inline-block;background-color:{PrimaryColor};color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:8px;"">
+                Resetuj lozinku
+              </a>
+            </div>
+            <p style=""margin:0;color:{MutedText};font-size:13px;line-height:1.5;"">
+              Ako niste vi zatražili resetovanje lozinke, slobodno ignorišite ovu poruku.
+            </p>
+            <p style=""margin:8px 0 0;color:{PrimaryColor};font-size:13px;word-break:break-all;"">
+              {resetUrl}
+            </p>
+            <div style=""background-color:{LightBg};border-radius:8px;padding:16px;margin:24px 0 0;"">
+              <p style=""margin:0;color:{MutedText};font-size:13px;line-height:1.5;"">
+                ⏰ Link je aktivan 1 sat.
+              </p>
+            </div>";
+
+        return BaseLayout("Resetovanje lozinke", PrimaryColor, "🔑", body, "SalonPro");
+    }
 }

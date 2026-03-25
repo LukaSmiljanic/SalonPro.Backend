@@ -43,7 +43,7 @@ export const Input: React.FC<InputProps> = ({
           {...props}
         />
         {rightIcon && (
-          <span className="absolute right-3 text-text-muted pointer-events-none">{rightIcon}</span>
+          <span className="absolute right-3 text-text-muted flex items-center">{rightIcon}</span>
         )}
       </div>
       {error && <p className="text-xs text-error">{error}</p>}

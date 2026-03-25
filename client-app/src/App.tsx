@@ -14,6 +14,7 @@ import { ReportsPage } from './pages/ReportsPage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { TenantsPage } from './pages/TenantsPage';
 import { VerifyEmailPage } from './pages/VerifyEmailPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 const App: React.FC = () => {
   return (
@@ -42,6 +43,7 @@ const App: React.FC = () => {
 
           {/* Public — no auth wrapper */}
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Catch-all */}
           <Route path="*" element={<Navigate to="/" replace />} />

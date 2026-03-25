@@ -73,6 +73,12 @@ public class MailKitEmailService : IEmailService
         await SendEmailAsync(toEmail, $"Pretplata je istekla — {tenantName}", html, cancellationToken);
     }
 
+    public async Task SendPasswordResetAsync(string toEmail, string resetUrl, CancellationToken cancellationToken = default)
+    {
+        var html = EmailTemplates.PasswordReset(resetUrl);
+        await SendEmailAsync(toEmail, "Resetovanje lozinke — SalonPro", html, cancellationToken);
+    }
+
     private async Task SendEmailAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken)
     {
         if (!_settings.Enabled)
