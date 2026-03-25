@@ -12,11 +12,18 @@ public record InsightDto(
     string? ActionData = null
 );
 
+public record InactiveClientDto(
+    Guid Id,
+    string FullName,
+    DateTime? LastVisit
+);
+
 public record DashboardInsightsDto(
     List<InsightDto> Insights,
     int InactiveClientsCount,
     int ScheduleGapsCount,
-    decimal WeekRevenueChangePercent
+    decimal WeekRevenueChangePercent,
+    List<InactiveClientDto> InactiveClients
 );
 
 public record ClientInsightsDto(

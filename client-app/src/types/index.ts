@@ -189,11 +189,18 @@ export interface Insight {
   actionData?: string;
 }
 
+export interface InactiveClient {
+  id: string;
+  fullName: string;
+  lastVisit?: string;
+}
+
 export interface DashboardInsights {
   insights: Insight[];
   inactiveClientsCount: number;
   scheduleGapsCount: number;
   weekRevenueChangePercent: number;
+  inactiveClients: InactiveClient[];
 }
 
 export interface ClientInsights {

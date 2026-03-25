@@ -1,5 +1,5 @@
 import apiClient from './client';
-import type { DashboardStats, RevenueChartPoint, AppointmentStatus, BirthdayReminder, DashboardInsights, Insight, InsightPriority } from '../types';
+import type { DashboardStats, RevenueChartPoint, AppointmentStatus, BirthdayReminder, DashboardInsights, Insight, InsightPriority, InactiveClient } from '../types';
 
 /** Backend GET /dashboard/stats response (camelCase) */
 interface DashboardStatsResponse {
@@ -104,6 +104,11 @@ interface DashboardInsightsResponse {
   inactiveClientsCount: number;
   scheduleGapsCount: number;
   weekRevenueChangePercent: number;
+  inactiveClients: Array<{
+    id: string;
+    fullName: string;
+    lastVisit?: string;
+  }>;
 }
 
 function mapPriority(p: string): InsightPriority {
@@ -129,5 +134,10 @@ export const getDashboardInsights = async (): Promise<DashboardInsights> => {
     inactiveClientsCount: d.inactiveClientsCount ?? 0,
     scheduleGapsCount: d.scheduleGapsCount ?? 0,
     weekRevenueChangePercent: d.weekRevenueChangePercent ?? 0,
+    inactiveClients: (d.inactiveClients ?? []).map(c => ({
+      id: c.id,
+      fullName: c.fullName,
+      lastVisit: c.lastVisit,
+    })),
   };
 };
