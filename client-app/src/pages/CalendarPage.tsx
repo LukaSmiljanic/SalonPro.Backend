@@ -129,17 +129,26 @@ export const CalendarPage: React.FC = () => {
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => cancelAppointment(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       setSelectedAppt(null);
     },
   });
 
   const completeMutation = useMutation({
     mutationFn: (id: string) => completeAppointment(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+    onMutate: (id) => {
+      // Optimistic: immediately update the selected appointment badge
+      setSelectedAppt(prev => prev && prev.id === id ? { ...prev, status: 'Completed' } : prev);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       setSelectedAppt(null);
+    },
+    onError: (_err, id) => {
+      // Rollback optimistic update — reopen detail from cache
+      const cached = appointments.find(a => a.id === id);
+      if (cached) setSelectedAppt(cached);
     },
   });
 

@@ -64,14 +64,29 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
 
         // ═══════════════════════════════════════════════════════════════
         // 2. CLIENT RE-ENGAGEMENT — clients inactive for 30+ days
+        //    A client is "active" if they had a Completed appointment in the
+        //    last 30 days OR have any upcoming (Scheduled/Confirmed) appointment.
         // ═══════════════════════════════════════════════════════════════
         var thirtyDaysAgo = today.AddDays(-30);
 
-        var activeClientIds = await appointments
+        var recentlyCompletedClientIds = await appointments
             .Where(a => a.StartTime >= thirtyDaysAgo && a.Status == AppointmentStatus.Completed)
             .Select(a => a.ClientId)
             .Distinct()
             .ToListAsync(cancellationToken);
+
+        var upcomingClientIds2 = await appointments
+            .Where(a => a.StartTime >= now
+                && a.Status != AppointmentStatus.Cancelled
+                && a.Status != AppointmentStatus.NoShow)
+            .Select(a => a.ClientId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var activeClientIds = recentlyCompletedClientIds
+            .Union(upcomingClientIds2)
+            .Distinct()
+            .ToList();
 
         var totalClientCount = await clients.CountAsync(cancellationToken);
         var inactiveCount = totalClientCount - activeClientIds.Count;
