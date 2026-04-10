@@ -49,7 +49,11 @@ export const AiInsightsPanel: React.FC = () => {
       ) : data && data.insights.length > 0 ? (
         <div className="space-y-2">
           {data.insights.map((insight, idx) => (
-            <InsightCard key={`${insight.type}-${idx}`} insight={insight} />
+            <InsightCard
+              key={`${insight.type}-${idx}`}
+              insight={insight}
+              inactiveClients={insight.type === 'ClientReEngagement' ? data.inactiveClients : undefined}
+            />
           ))}
         </div>
       ) : (

@@ -4,7 +4,7 @@ import {
   CalendarClock, UserX, TrendingUp, TrendingDown, AlertTriangle,
   Clock, Sparkles, CalendarPlus, UserCheck, type LucideIcon
 } from 'lucide-react';
-import type { Insight, InsightPriority, InsightType } from '../types';
+import type { Insight, InsightPriority, InsightType, InactiveClient } from '../types';
 
 const iconMap: Record<string, LucideIcon> = {
   CalendarClock,
@@ -35,6 +35,7 @@ const priorityLabels: Record<InsightPriority, string> = {
 interface InsightCardProps {
   insight: Insight;
   compact?: boolean;
+  inactiveClients?: InactiveClient[];
 }
 
 const insightRouteMap: Partial<Record<InsightType, string>> = {
@@ -48,6 +49,19 @@ const insightRouteMap: Partial<Record<InsightType, string>> = {
   ServiceHistory: '/services',
 };
 
+const formatLastVisit = (dateStr?: string): string => {
+  if (!dateStr) return 'nikad';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 1) return 'danas';
+  if (diffDays === 1) return 'juče';
+  if (diffDays < 7) return `pre ${diffDays} dana`;
+  if (diffDays < 30) return `pre ${Math.floor(diffDays / 7)} ned.`;
+  return `pre ${Math.floor(diffDays / 30)} mes.`;
+};
+
+export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = false, inactiveClients }) => {
 function buildInsightRoute(targetRoute: string, insight: Insight): string {
   if (targetRoute === '/clients' && insight.actionData) {
     return `${targetRoute}?clientId=${encodeURIComponent(insight.actionData)}`;
@@ -93,7 +107,34 @@ export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = fal
             </span>
           </div>
           <p className="text-xs text-text-muted leading-relaxed">{insight.description}</p>
-          {insight.actionLabel && targetRoute && (
+          {/* Inline list of inactive clients with links */}
+          {insight.type === 'ClientReEngagement' && inactiveClients && inactiveClients.length > 0 && (
+            <div className="mt-2 space-y-1">
+              {inactiveClients.slice(0, 5).map((client) => (
+                <button
+                  key={client.id}
+                  onClick={() => navigate(`/clients?highlight=${client.id}`)}
+                  className="flex items-center justify-between w-full text-left px-2 py-1.5 rounded-md hover:bg-white/60 transition-colors group"
+                >
+                  <span className="text-xs font-medium text-[#5B3A8C] group-hover:text-[#4A2E73]">
+                    {client.fullName}
+                  </span>
+                  <span className="text-[10px] text-text-faint">
+                    {formatLastVisit(client.lastVisit)}
+                  </span>
+                </button>
+              ))}
+              {inactiveClients.length > 5 && (
+                <button
+                  onClick={() => navigate('/clients')}
+                  className="text-[11px] text-text-faint hover:text-[#5B3A8C] transition-colors px-2"
+                >
+                  + još {inactiveClients.length - 5} klijenata
+                </button>
+              )}
+            </div>
+          )}
+          {insight.actionLabel && targetRoute && insight.type !== 'ClientReEngagement' && (
             <button
               onClick={() => navigate(buildInsightRoute(targetRoute, insight))}
               className="mt-2 text-xs font-medium text-[#5B3A8C] hover:text-[#4A2E73] transition-colors"

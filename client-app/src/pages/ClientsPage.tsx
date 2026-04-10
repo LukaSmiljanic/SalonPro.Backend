@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2, Award, Star, Trophy, Crown } from 'lucide-react';
 import { getClients, createClient, updateClient, deleteClient, getClient } from '../api/clients';
 import type { Client, CreateClientRequest, LoyaltyTier } from '../types';
@@ -43,13 +44,28 @@ function getLoyaltyIcon(tier: LoyaltyTier) {
 
 export const ClientsPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const highlightHandled = useRef(false);
 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+
+  // Auto-select client if navigated with ?highlight=clientId
+  useEffect(() => {
+    const highlightId = searchParams.get('highlight');
+    if (highlightId && !highlightHandled.current) {
+      highlightHandled.current = true;
+      getClient(highlightId)
+        .then((client) => setSelectedClient(client))
+        .catch(() => { /* client not found, ignore */ });
+      // Clean up the URL param
+      searchParams.delete('highlight');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [form, setForm] = useState<CreateClientRequest>({

@@ -99,8 +99,30 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
                 .FirstOrDefaultAsync(cancellationToken)
             : null;
 
+        // Fetch inactive client details (name + last visit)
+        var inactiveClients = new List<InactiveClientDto>();
         if (inactiveCount > 0)
         {
+            var inactiveClientEntities = await clients
+                .Where(c => !activeClientIds.Contains(c.Id))
+                .Select(c => new
+                {
+                    c.Id,
+                    c.FirstName,
+                    c.LastName,
+                    LastVisit = appointments
+                        .Where(a => a.ClientId == c.Id && a.Status == AppointmentStatus.Completed)
+                        .OrderByDescending(a => a.StartTime)
+                        .Select(a => (DateTime?)a.StartTime)
+                        .FirstOrDefault()
+                })
+                .ToListAsync(cancellationToken);
+
+            inactiveClients = inactiveClientEntities
+                .Select(c => new InactiveClientDto(c.Id, $"{c.FirstName} {c.LastName}", c.LastVisit))
+                .OrderBy(c => c.LastVisit ?? DateTime.MinValue) // longest inactive first
+                .ToList();
+
             var priority = inactiveCount switch
             {
                 > 10 => InsightPriority.Urgent,
@@ -108,11 +130,17 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
                 _ => InsightPriority.Medium
             };
 
+            // Build description with client names (max 3 shown)
+            var namesList = inactiveClients.Take(3).Select(c => c.FullName).ToList();
+            var namesText = string.Join(", ", namesList);
+            if (inactiveCount > 3)
+                namesText += $" i još {inactiveCount - 3}";
+
             insights.Add(new InsightDto(
                 InsightType.ClientReEngagement,
                 priority,
                 $"{inactiveCount} neaktivnih klijenata",
-                $"{inactiveCount} klijenata nije imalo termin poslednjih 30 dana. Pošaljite im podsetnik ili ponudu.",
+                $"{namesText} — bez termina poslednjih 30 dana. Pošaljite im podsetnik ili ponudu.",
                 "UserX",
                 "Pogledaj klijente",
                 inactiveClientSample?.Id
@@ -251,7 +279,8 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
             insights,
             inactiveCount,
             gapCount,
-            weekChangePercent
+            weekChangePercent,
+            inactiveClients
         );
     }
 }
