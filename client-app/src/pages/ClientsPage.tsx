@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2, Award, Star, Trophy, Crown } from 'lucide-react';
 import { getClients, createClient, updateClient, deleteClient, getClient } from '../api/clients';
@@ -42,6 +43,7 @@ function getLoyaltyIcon(tier: LoyaltyTier) {
 
 export const ClientsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -54,6 +56,7 @@ export const ClientsPage: React.FC = () => {
     firstName: '', lastName: '', email: '', phone: '', notes: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const targetClientId = searchParams.get('clientId');
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
@@ -63,6 +66,24 @@ export const ClientsPage: React.FC = () => {
     }, 350);
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [search]);
+
+  useEffect(() => {
+    if (!targetClientId || selectedClient?.id === targetClientId) return;
+
+    let isMounted = true;
+    void getClient(targetClientId)
+      .then((client) => {
+        if (!isMounted) return;
+        setSelectedClient(client);
+      })
+      .catch(() => {
+        // keep list view usable even if deep-link client lookup fails
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [targetClientId, selectedClient?.id]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.clients.list({

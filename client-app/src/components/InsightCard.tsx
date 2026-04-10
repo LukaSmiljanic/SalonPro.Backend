@@ -48,6 +48,14 @@ const insightRouteMap: Partial<Record<InsightType, string>> = {
   ServiceHistory: '/services',
 };
 
+function buildInsightRoute(targetRoute: string, insight: Insight): string {
+  if (targetRoute === '/clients' && insight.actionData) {
+    return `${targetRoute}?clientId=${encodeURIComponent(insight.actionData)}`;
+  }
+
+  return targetRoute;
+}
+
 export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = false }) => {
   const navigate = useNavigate();
   const IconComponent = iconMap[insight.icon] || Sparkles;
@@ -87,7 +95,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = fal
           <p className="text-xs text-text-muted leading-relaxed">{insight.description}</p>
           {insight.actionLabel && targetRoute && (
             <button
-              onClick={() => navigate(targetRoute)}
+              onClick={() => navigate(buildInsightRoute(targetRoute, insight))}
               className="mt-2 text-xs font-medium text-[#5B3A8C] hover:text-[#4A2E73] transition-colors"
             >
               {insight.actionLabel} →

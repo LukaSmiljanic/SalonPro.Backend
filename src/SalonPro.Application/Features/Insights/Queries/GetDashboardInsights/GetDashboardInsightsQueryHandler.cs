@@ -90,6 +90,14 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
 
         var totalClientCount = await clients.CountAsync(cancellationToken);
         var inactiveCount = totalClientCount - activeClientIds.Count;
+        var inactiveClientSample = inactiveCount > 0
+            ? await clients
+                .Where(c => !activeClientIds.Contains(c.Id))
+                .Select(c => new { c.Id, c.FirstName, c.LastName })
+                .OrderBy(c => c.FirstName)
+                .ThenBy(c => c.LastName)
+                .FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         if (inactiveCount > 0)
         {
@@ -106,7 +114,8 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
                 $"{inactiveCount} neaktivnih klijenata",
                 $"{inactiveCount} klijenata nije imalo termin poslednjih 30 dana. Pošaljite im podsetnik ili ponudu.",
                 "UserX",
-                "Pogledaj klijente"
+                "Pogledaj klijente",
+                inactiveClientSample?.Id
             ));
         }
 
@@ -179,7 +188,9 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
                     riskCount == 1
                         ? $"{riskName} ima istoriju nedolazaka. Pošaljite podsetnik za predstojeći termin."
                         : $"{riskCount} klijenata sa predstojećim terminima ima istoriju nedolazaka. Pošaljite podsetnik.",
-                    "AlertTriangle"
+                    "AlertTriangle",
+                    "Pogledaj klijenta",
+                    riskClient?.ClientId
                 ));
             }
         }
