@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalonPro.Application.Common;
 using SalonPro.Application.Features.Tenants.DTOs;
 using SalonPro.Domain.Interfaces;
 
@@ -66,6 +67,7 @@ public class GetTenantsQueryHandler : IRequestHandler<GetTenantsQuery, List<Tena
                 t.City,
                 t.IsActive,
                 t.EmailVerified,
+                TenantPlanRules.Normalize(t.Plan),
                 subStatus,
                 t.SubscriptionEndDate,
                 daysRemaining,

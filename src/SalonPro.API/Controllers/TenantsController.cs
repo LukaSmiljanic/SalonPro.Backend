@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using SalonPro.Application.Features.Tenants.Commands.UpdateTenantPlan;
 using SalonPro.Application.Features.Tenants.DTOs;
 using SalonPro.Application.Features.Tenants.Queries.GetTenants;
 
@@ -19,5 +20,17 @@ public class TenantsController : ApiControllerBase
     {
         var result = await Mediator.Send(new GetTenantsQuery());
         return Ok(result);
+    }
+
+    public record UpdateTenantPlanRequest(string Plan);
+
+    [HttpPut("{id:guid}/plan")]
+    [ProducesResponseType(204)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(404)]
+    public async Task<IActionResult> UpdatePlan([FromRoute] Guid id, [FromBody] UpdateTenantPlanRequest body)
+    {
+        await Mediator.Send(new UpdateTenantPlanCommand(id, body.Plan));
+        return NoContent();
     }
 }

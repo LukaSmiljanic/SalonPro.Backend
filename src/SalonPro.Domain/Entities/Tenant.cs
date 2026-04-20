@@ -17,6 +17,7 @@ public class Tenant : BaseAuditableEntity
     public string? TimeZone { get; set; }
     public string? Currency { get; set; } = "RSD";
     public string? Language { get; set; } = "sr";
+    public string Plan { get; set; } = "Basic";
 
     // Email verification
     public bool EmailVerified { get; set; } = false;
@@ -26,6 +27,8 @@ public class Tenant : BaseAuditableEntity
     // Subscription
     public DateTime? SubscriptionStartDate { get; set; }
     public DateTime? SubscriptionEndDate { get; set; }
+    /// <summary>Set when a subscription-expiry warning email was sent; cleared when the subscription end date is extended.</summary>
+    public DateTime? SubscriptionExpiryWarningSentUtc { get; set; }
     public bool IsTrialing { get; set; } = false;
 
     /// <summary>True if subscription (or trial) is currently valid.</summary>

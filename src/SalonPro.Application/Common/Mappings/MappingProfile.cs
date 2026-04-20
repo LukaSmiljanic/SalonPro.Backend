@@ -81,7 +81,9 @@ public class MappingProfile : Profile
         CreateMap<Appointment, AppointmentDto>()
             .ForMember(dest => dest.ClientName, opt => opt.MapFrom(src => src.Client.FullName))
             .ForMember(dest => dest.StaffMemberName, opt => opt.MapFrom(src => src.StaffMember.FullName))
-            .ForMember(dest => dest.Services, opt => opt.MapFrom(src => src.AppointmentServices));
+            .ForMember(dest => dest.Services, opt => opt.MapFrom(src => src.AppointmentServices))
+            .ForMember(dest => dest.VisitNumber, opt => opt.Ignore())
+            .ForMember(dest => dest.IsLoyaltyMilestoneVisit, opt => opt.Ignore());
 
         CreateMap<AppointmentService, AppointmentServiceDetailDto>()
             .ForMember(dest => dest.ServiceName, opt => opt.MapFrom(src => src.Service.Name));

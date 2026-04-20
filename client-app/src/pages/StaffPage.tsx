@@ -5,6 +5,7 @@ import { getStaff, createStaff, updateStaff, deleteStaff } from '../api/staff';
 import type { UpdateStaffRequest } from '../api/staff';
 import type { StaffMember, CreateStaffRequest } from '../types';
 import { queryKeys } from '../lib/queryKeys';
+import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Modal } from '../components/Modal';
@@ -32,6 +33,7 @@ const emptyForm: StaffForm = {
 };
 
 export const StaffPage: React.FC = () => {
+  const { plan, features } = useAuth();
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
@@ -144,6 +146,8 @@ export const StaffPage: React.FC = () => {
   };
 
   const formLoading = createMutation.isPending || updateMutation.isPending;
+  const activeStaffCount = staff.filter(s => s.isActive).length;
+  const staffLimitReached = activeStaffCount >= features.maxStaffMembers;
 
   return (
     <div className="container-main py-6 space-y-6">
@@ -154,11 +158,25 @@ export const StaffPage: React.FC = () => {
             Osoblje salona — dodajte, izmenite ili uklonite zaposlene
           </p>
         </div>
-        <Button size="sm" icon={<Plus size={13} />} onClick={openNewModal} className="shrink-0">
+        <Button
+          size="sm"
+          icon={<Plus size={13} />}
+          onClick={openNewModal}
+          className="shrink-0"
+          disabled={staffLimitReached}
+          title={staffLimitReached ? `Dostignut limit zaposlenih za ${plan} paket` : undefined}
+        >
           <span className="hidden sm:inline">Dodaj zaposlenog</span>
           <span className="sm:hidden">Dodaj</span>
         </Button>
       </div>
+
+      {staffLimitReached && (
+        <div className="p-3 bg-warning-bg border border-warning/20 rounded-lg text-sm text-warning">
+          Paket <strong>{plan}</strong> dozvoljava najviše <strong>{features.maxStaffMembers}</strong> aktivnih zaposlenih.
+          Nadogradite paket za više članova osoblja.
+        </div>
+      )}
 
       {/* Soft-delete info message */}
       {deleteMessage && (
@@ -261,6 +279,7 @@ export const StaffPage: React.FC = () => {
               loading={formLoading}
               icon={<Save size={13} />}
               onClick={handleSubmit}
+              disabled={!editingStaff && staffLimitReached}
             >
               {editingStaff ? 'Sačuvaj' : 'Dodaj'}
             </Button>

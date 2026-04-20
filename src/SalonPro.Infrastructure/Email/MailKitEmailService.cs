@@ -128,9 +128,7 @@ public class MailKitEmailService : IEmailService
 
     private static (string Date, string Time, string Price) FormatDetails(AppointmentEmailDto dto)
     {
-        // Belgrade timezone for display
-        var tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Belgrade");
-        var localTime = TimeZoneInfo.ConvertTimeFromUtc(dto.StartTime, tz);
+        var localTime = AppointmentDateTimeHelper.ToDisplayDateTime(dto.StartTime);
 
         var dateFormatted = localTime.ToString("dd.MM.yyyy");
         var timeFormatted = localTime.ToString("HH:mm");

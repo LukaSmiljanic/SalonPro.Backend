@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
-import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2, Award, Star, Trophy, Crown } from 'lucide-react';
+import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2, Award, Star, Trophy, Crown, History } from 'lucide-react';
 import { getClients, createClient, updateClient, deleteClient, getClient } from '../api/clients';
 import type { Client, CreateClientRequest, LoyaltyTier } from '../types';
 import { queryKeys } from '../lib/queryKeys';
@@ -52,6 +51,7 @@ export const ClientsPage: React.FC = () => {
   const highlightHandled = useRef(false);
 
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
 
   // Auto-select client if navigated with ?highlight=clientId
   useEffect(() => {
@@ -425,6 +425,15 @@ export const ClientsPage: React.FC = () => {
                 variant="secondary"
                 size="sm"
                 className="flex-1"
+                icon={<History size={13} />}
+                onClick={() => setHistoryModalOpen(true)}
+              >
+                Istorija
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="flex-1"
                 icon={<UserCircle2 size={13} />}
                 onClick={() => openEditModal(selectedClient)}
               >
@@ -500,6 +509,65 @@ export const ClientsPage: React.FC = () => {
             />
           </div>
         </div>
+      </Modal>
+
+      {/* Client visit history modal */}
+      <Modal
+        isOpen={historyModalOpen && !!selectedClient}
+        onClose={() => setHistoryModalOpen(false)}
+        title={`Istorija poseta${selectedClient ? ` · ${selectedClient.firstName} ${selectedClient.lastName}` : ''}`}
+      >
+        {selectedClient && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-surface-2 rounded-lg p-3 text-center">
+                <p className="text-lg font-semibold text-text">{selectedClient.totalVisits}</p>
+                <p className="text-xs text-text-faint">Ukupno poseta</p>
+              </div>
+              <div className="bg-surface-2 rounded-lg p-3 text-center">
+                <p className="text-lg font-semibold text-text">
+                  {new Intl.NumberFormat('sr-Latn-RS', { style: 'currency', currency: 'RSD', minimumFractionDigits: 0 }).format(selectedClient.totalSpent)}
+                </p>
+                <p className="text-xs text-text-faint">Ukupno potrošeno</p>
+              </div>
+            </div>
+
+            {!selectedClient.visitHistory || selectedClient.visitHistory.length === 0 ? (
+              <EmptyState
+                title="Nema istorije poseta"
+                description="Za ovog klijenta još nema završenih termina."
+              />
+            ) : (
+              <div className="max-h-[360px] overflow-auto rounded-lg border border-divider">
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-surface-2 border-b border-divider">
+                    <tr>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Datum</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Usluga</th>
+                      <th className="text-left py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Osoblje</th>
+                      <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Cena</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedClient.visitHistory
+                      .slice()
+                      .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())
+                      .map((visit, idx) => (
+                        <tr key={`${visit.date}-${idx}`} className="border-b border-divider last:border-0">
+                          <td className="py-2 px-3 text-text whitespace-nowrap">{format(parseISO(visit.date), 'd. MMM yyyy · HH:mm')}</td>
+                          <td className="py-2 px-3 text-text">{visit.serviceName}</td>
+                          <td className="py-2 px-3 text-text-muted">{visit.staffName}</td>
+                          <td className="py-2 px-3 text-right text-text font-medium whitespace-nowrap">
+                            {new Intl.NumberFormat('sr-Latn-RS', { style: 'currency', currency: 'RSD', minimumFractionDigits: 0 }).format(visit.price)}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   );

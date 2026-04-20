@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalonPro.Application.Common;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Application.Common.Interfaces;
 using SalonPro.Application.Features.Auth.DTOs;
@@ -106,7 +107,13 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
                 TenantName = tenant?.Name ?? string.Empty
             },
             SubscriptionStatus = subscriptionStatus,
-            SubscriptionEndDate = tenant?.SubscriptionEndDate
+            SubscriptionEndDate = tenant?.SubscriptionEndDate,
+            Plan = TenantPlanRules.Normalize(tenant?.Plan),
+            Features = new TenantPlanFeaturesDto
+            {
+                CanUseOnlineBooking = TenantPlanRules.CanUseOnlineBooking(tenant?.Plan),
+                MaxStaffMembers = TenantPlanRules.MaxStaffMembers(tenant?.Plan),
+            }
         };
     }
 }

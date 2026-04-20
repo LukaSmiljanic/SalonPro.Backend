@@ -92,6 +92,12 @@ function mapDetailDtoToClient(d: ClientDetailDtoResponse): Client {
     lastVisit: d.lastVisitDate ?? undefined,
     createdAt: '',
     loyalty,
+    visitHistory: (d.visitHistory ?? []).map(v => ({
+      date: v.date,
+      serviceName: v.serviceName,
+      staffName: v.staffName,
+      price: v.price,
+    })),
   };
 }
 

@@ -118,6 +118,22 @@ using (var scope = app.Services.CreateScope())
                 ALTER TABLE Users ADD PasswordResetToken NVARCHAR(256) NULL;
                 ALTER TABLE Users ADD PasswordResetTokenExpiry DATETIME2 NULL;
             END");
+
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF COL_LENGTH('Tenants', 'SubscriptionExpiryWarningSentUtc') IS NULL
+            BEGIN
+                ALTER TABLE Tenants ADD SubscriptionExpiryWarningSentUtc DATETIME2 NULL;
+            END");
+
+        await context.Database.ExecuteSqlRawAsync(@"
+            IF COL_LENGTH('Tenants', 'Plan') IS NULL
+            BEGIN
+                ALTER TABLE Tenants ADD Plan NVARCHAR(20) NOT NULL CONSTRAINT DF_Tenants_Plan DEFAULT 'Basic';
+            END");
+
+        await context.Database.ExecuteSqlRawAsync(@"
+            UPDATE Tenants SET Plan = 'Basic'
+            WHERE Plan IS NULL OR LTRIM(RTRIM(Plan)) = ''");
     }
     catch (Exception ex)
     {

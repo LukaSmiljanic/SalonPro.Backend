@@ -1,4 +1,7 @@
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using SalonPro.Application.Common;
+using SalonPro.Application.Common.Exceptions;
 using SalonPro.Domain.Entities;
 using SalonPro.Domain.Interfaces;
 
@@ -21,6 +24,22 @@ public class CreateStaffMemberCommandHandler : IRequestHandler<CreateStaffMember
     {
         var tenantId = _currentTenantService.TenantId
             ?? throw new InvalidOperationException("Kontekst salona nije postavljen.");
+
+        var tenant = await _unitOfWork.Tenants.GetByIdAsync(tenantId, cancellationToken)
+            ?? throw new NotFoundException(nameof(Tenant), tenantId);
+
+        var maxStaffMembers = TenantPlanRules.MaxStaffMembers(tenant.Plan);
+        if (maxStaffMembers != int.MaxValue)
+        {
+            var activeStaffCount = await _unitOfWork.StaffMembers.Query()
+                .CountAsync(s => s.TenantId == tenantId && s.IsActive, cancellationToken);
+
+            if (activeStaffCount >= maxStaffMembers)
+            {
+                throw new ValidationException(
+                    $"Vaš paket ({TenantPlanRules.Normalize(tenant.Plan)}) dozvoljava najviše {maxStaffMembers} aktivnih zaposlenih. Nadogradite paket za više članova osoblja.");
+            }
+        }
 
         var staffMember = new StaffMember
         {

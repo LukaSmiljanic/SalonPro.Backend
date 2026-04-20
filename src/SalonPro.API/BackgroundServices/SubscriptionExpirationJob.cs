@@ -5,9 +5,9 @@ using SalonPro.Infrastructure.Persistence;
 namespace SalonPro.API.BackgroundServices;
 
 /// <summary>
-/// Background job that runs daily to:
+/// Background job (runs every 24h) to:
 /// 1. Deactivate tenants whose subscription has expired (sets IsActive = false)
-/// 2. Send warning emails 3 days before expiry
+/// 2. Send one warning email per subscription period when expiry is within 3 days (deduped)
 /// 3. Send expiration notification email when subscription expires
 /// </summary>
 public class SubscriptionExpirationJob : BackgroundService
@@ -25,15 +25,15 @@ public class SubscriptionExpirationJob : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("SubscriptionExpirationJob started. Checking every 6 hours.");
+        _logger.LogInformation("SubscriptionExpirationJob started. Checking every 24 hours.");
 
         // Wait 5 minutes after startup
         await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
 
-        // Run immediately on first tick, then every 6 hours
+        // Run immediately on first tick, then daily (enough for expiry + warning dedupe)
         await CheckSubscriptionsAsync(stoppingToken);
 
-        using var timer = new PeriodicTimer(TimeSpan.FromHours(6));
+        using var timer = new PeriodicTimer(TimeSpan.FromHours(24));
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
@@ -97,13 +97,14 @@ public class SubscriptionExpirationJob : BackgroundService
             _logger.LogInformation("Deactivated {Count} tenant(s) with expired subscriptions.", expiredTenants.Count);
         }
 
-        // 2. Send warning emails for subscriptions expiring in 3 days
+        // 2. Send warning emails for subscriptions expiring within 3 days (once per period — see SubscriptionExpiryWarningSentUtc)
         var warningDate = now.AddDays(3);
         var warningTenants = await context.Tenants
             .Where(t => t.IsActive &&
                         t.SubscriptionEndDate.HasValue &&
                         t.SubscriptionEndDate.Value > now &&
                         t.SubscriptionEndDate.Value <= warningDate &&
+                        !t.SubscriptionExpiryWarningSentUtc.HasValue &&
                         !string.IsNullOrEmpty(t.Email))
             .ToListAsync(cancellationToken);
 
@@ -114,6 +115,8 @@ public class SubscriptionExpirationJob : BackgroundService
                 var daysLeft = (int)Math.Ceiling((tenant.SubscriptionEndDate!.Value - now).TotalDays);
                 await emailService.SendSubscriptionWarningAsync(
                     tenant.Email!, tenant.Name, daysLeft, tenant.SubscriptionEndDate.Value, cancellationToken);
+
+                tenant.SubscriptionExpiryWarningSentUtc = DateTime.UtcNow;
 
                 _logger.LogInformation(
                     "Sent subscription warning to {Email} for tenant {TenantName} — {Days} day(s) remaining.",
@@ -126,6 +129,9 @@ public class SubscriptionExpirationJob : BackgroundService
                     tenant.Email, tenant.Name);
             }
         }
+
+        if (warningTenants.Count > 0)
+            await context.SaveChangesAsync(cancellationToken);
 
         // 3. Reactivate tenants whose subscription was renewed (extended) while inactive
         var reactivatedTenants = await context.Tenants

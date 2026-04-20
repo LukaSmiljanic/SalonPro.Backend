@@ -143,7 +143,7 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
                 $"{namesText} — bez termina poslednjih 30 dana. Pošaljite im podsetnik ili ponudu.",
                 "UserX",
                 "Pogledaj klijente",
-                inactiveClientSample?.Id
+                inactiveClientSample?.Id.ToString()
             ));
         }
 
@@ -218,7 +218,7 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
                         : $"{riskCount} klijenata sa predstojećim terminima ima istoriju nedolazaka. Pošaljite podsetnik.",
                     "AlertTriangle",
                     "Pogledaj klijenta",
-                    riskClient?.ClientId
+                    riskClient?.ClientId.ToString()
                 ));
             }
         }

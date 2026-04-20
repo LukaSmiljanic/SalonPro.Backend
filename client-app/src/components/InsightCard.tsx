@@ -61,7 +61,6 @@ const formatLastVisit = (dateStr?: string): string => {
   return `pre ${Math.floor(diffDays / 30)} mes.`;
 };
 
-export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = false, inactiveClients }) => {
 function buildInsightRoute(targetRoute: string, insight: Insight): string {
   if (targetRoute === '/clients' && insight.actionData) {
     return `${targetRoute}?clientId=${encodeURIComponent(insight.actionData)}`;
@@ -70,7 +69,7 @@ function buildInsightRoute(targetRoute: string, insight: Insight): string {
   return targetRoute;
 }
 
-export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = false }) => {
+export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = false, inactiveClients }) => {
   const navigate = useNavigate();
   const IconComponent = iconMap[insight.icon] || Sparkles;
   const styles = priorityStyles[insight.priority];
@@ -113,7 +112,7 @@ export const InsightCard: React.FC<InsightCardProps> = ({ insight, compact = fal
               {inactiveClients.slice(0, 5).map((client) => (
                 <button
                   key={client.id}
-                  onClick={() => navigate(`/clients?highlight=${client.id}`)}
+                  onClick={() => navigate(`/clients?clientId=${encodeURIComponent(client.id)}`)}
                   className="flex items-center justify-between w-full text-left px-2 py-1.5 rounded-md hover:bg-white/60 transition-colors group"
                 >
                   <span className="text-xs font-medium text-[#5B3A8C] group-hover:text-[#4A2E73]">

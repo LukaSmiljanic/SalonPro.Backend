@@ -56,6 +56,7 @@ public class CreatePaymentCommandHandler : IRequestHandler<CreatePaymentCommand,
 
                 tenant.IsTrialing = false;
                 tenant.IsActive = true;
+                tenant.SubscriptionExpiryWarningSentUtc = null;
 
                 _unitOfWork.Tenants.Update(tenant);
 

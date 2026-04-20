@@ -261,6 +261,9 @@ export const LoginPage: React.FC = () => {
                   Zaboravljena lozinka?
                 </button>
               </div>
+              {/*
+                Opciono polje za slug / tenant ID (više salona na isti email).
+                Sakriveno privremeno — login ide samo email + lozinka; backend i dalje prihvata tenantId u telu ako ga ponovo uključimo.
               <Input
                 label="ID ili slug salona"
                 type="text"
@@ -269,6 +272,7 @@ export const LoginPage: React.FC = () => {
                 onChange={e => setLoginForm(f => ({ ...f, tenantId: e.target.value }))}
                 hint="Potrebno samo ako imate više salona (isti email)"
               />
+              */}
               <Button type="submit" loading={isLoading} className="mt-1 w-full">
                 Prijavi se
               </Button>

@@ -9,6 +9,7 @@ public record TenantListDto(
     string? City,
     bool IsActive,
     bool EmailVerified,
+    string Plan,
     string SubscriptionStatus,
     DateTime? SubscriptionEndDate,
     int? DaysRemaining,

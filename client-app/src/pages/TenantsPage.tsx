@@ -4,10 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import {
   Building2, RefreshCw, CheckCircle2, Clock, AlertTriangle, XCircle,
-  Users, UserCheck, Search, CalendarPlus, CreditCard, MoreVertical
+  Users, UserCheck, Search, CalendarPlus, CreditCard, MoreVertical, Layers
 } from 'lucide-react';
-import { getTenants, extendSubscription } from '../api/tenants';
-import type { TenantInfo } from '../types';
+import { getTenants, extendSubscription, updateTenantPlan } from '../api/tenants';
+import type { TenantInfo, TenantPlan } from '../types';
 import { queryKeys } from '../lib/queryKeys';
 import { KpiCard } from '../components/KpiCard';
 import { Button } from '../components/Button';
@@ -54,6 +54,8 @@ const extendOptions = [
   { label: '90 dana', days: 90 },
   { label: '365 dana', days: 365 },
 ];
+
+const tenantPlans: TenantPlan[] = ['Basic', 'Standard', 'Pro'];
 
 // ── Extend Subscription Modal ────────────────────────────────────────────────
 
@@ -182,7 +184,8 @@ const ExtendSubscriptionModal: React.FC<ExtendModalProps> = ({ open, tenant, onC
 const TenantActions: React.FC<{
   tenant: TenantInfo;
   onExtend: (tenant: TenantInfo) => void;
-}> = ({ tenant, onExtend }) => {
+  onChangePlan: (tenant: TenantInfo, plan: TenantPlan) => void;
+}> = ({ tenant, onExtend, onChangePlan }) => {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -217,6 +220,23 @@ const TenantActions: React.FC<{
               <CalendarPlus size={13} className="text-primary" />
               Produži pretplatu
             </button>
+            <div className="border-t border-divider my-1" />
+            <div className="px-3 pt-1 pb-1 text-[10px] uppercase tracking-wide text-text-faint">
+              Paket
+            </div>
+            {tenantPlans.map(plan => (
+              <button
+                key={plan}
+                onClick={() => { onChangePlan(tenant, plan); setOpen(false); }}
+                className="w-full text-left px-3 py-2 text-xs flex items-center justify-between hover:bg-surface-2 text-text transition-colors"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Layers size={12} className="text-primary" />
+                  {plan}
+                </span>
+                {tenant.plan === plan && <span className="text-[10px] text-primary font-semibold">Aktivan</span>}
+              </button>
+            ))}
           </div>
         </>,
         document.body
@@ -230,10 +250,24 @@ const TenantActions: React.FC<{
 export const TenantsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [extendTenant, setExtendTenant] = useState<TenantInfo | null>(null);
+  const [planResult, setPlanResult] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: queryKeys.tenants.list(),
     queryFn: getTenants,
+  });
+
+  const planMutation = useMutation({
+    mutationFn: ({ tenantId, plan }: { tenantId: string; plan: TenantPlan }) => updateTenantPlan(tenantId, plan),
+    onSuccess: (_, vars) => {
+      setPlanResult(`Paket je ažuriran na ${vars.plan}.`);
+      queryClient.invalidateQueries({ queryKey: queryKeys.tenants.all });
+    },
+    onError: () => {
+      setPlanResult('Nije moguće ažurirati paket salona.');
+    },
   });
 
   const tenants: TenantInfo[] = data ?? [];
@@ -291,6 +325,13 @@ export const TenantsPage: React.FC = () => {
         </div>
       </div>
 
+      {planResult && (
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 flex items-center justify-between">
+          <span>{planResult}</span>
+          <button className="text-xs underline ml-4" onClick={() => setPlanResult(null)}>Zatvori</button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="card card-padded">
         <div className="flex items-center justify-between mb-4">
@@ -318,6 +359,7 @@ export const TenantsPage: React.FC = () => {
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden sm:table-cell">Ističe</th>
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden md:table-cell">Korisnici</th>
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden md:table-cell">Klijenti</th>
+                  <th className="text-center py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Paket</th>
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide">Poslednji login</th>
                   <th className="text-right py-2 px-3 text-xs font-medium text-text-muted uppercase tracking-wide hidden lg:table-cell">Registrovan</th>
                   <th className="w-10 py-2 px-3"></th>
@@ -360,6 +402,11 @@ export const TenantsPage: React.FC = () => {
                         <Users size={12} /> {tenant.clientCount}
                       </span>
                     </td>
+                    <td className="py-3 px-3 text-center">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full border text-xs bg-surface-2 border-border text-text">
+                        {tenant.plan}
+                      </span>
+                    </td>
                     <td className="py-3 px-3 text-right text-text-muted tabular-nums whitespace-nowrap">
                       {formatDate(tenant.lastLoginAt)}
                     </td>
@@ -370,6 +417,7 @@ export const TenantsPage: React.FC = () => {
                       <TenantActions
                         tenant={tenant}
                         onExtend={setExtendTenant}
+                        onChangePlan={(t, plan) => planMutation.mutate({ tenantId: t.id, plan })}
                       />
                     </td>
                   </tr>

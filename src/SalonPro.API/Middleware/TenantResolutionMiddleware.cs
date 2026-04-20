@@ -69,6 +69,13 @@ public class TenantResolutionMiddleware
             return;
         }
 
+        // Public online booking (tenant resolved inside controller by salon slug)
+        if (path.StartsWith("/api/public/", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         // SuperAdmin endpoints are cross-tenant and don't require a tenant ID
         if (SuperAdminPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
         {

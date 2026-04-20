@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import type { AxiosError } from 'axios';
 import {
-  format, parseISO, startOfWeek, addDays, addWeeks, subWeeks, subDays, isToday, isSameDay
+  format, parseISO, startOfWeek, addDays, addWeeks, subWeeks, subDays, isToday
 } from 'date-fns';
 import { srLatn } from 'date-fns/locale';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -36,16 +37,87 @@ function pxToTime(px: number, dayStart: number): { hours: number; minutes: numbe
   };
 }
 
+/** Backend only allows Complete when EndTime has passed; keep UI in sync. */
+function isAppointmentEnded(appt: { endTime: string }): boolean {
+  try {
+    return parseISO(appt.endTime).getTime() <= Date.now();
+  } catch {
+    return false;
+  }
+}
+
+function intervalsOverlap(aStart: number, aEnd: number, bStart: number, bEnd: number): boolean {
+  return aStart < bEnd && aEnd > bStart;
+}
+
+/**
+ * Side-by-side placement for appointments that overlap in time within the same day column
+ * (e.g. filter “Sve osoblje” — multiple staff at once).
+ */
+function layoutOverlappingAppointments(dayAppts: Appointment[]): Map<string, { leftPct: number; widthPct: number }> {
+  const map = new Map<string, { leftPct: number; widthPct: number }>();
+  if (dayAppts.length === 0) return map;
+
+  for (const appt of dayAppts) {
+    try {
+      const s = parseISO(appt.startTime).getTime();
+      const e = parseISO(appt.endTime).getTime();
+      if (Number.isNaN(s) || Number.isNaN(e)) {
+        map.set(appt.id, { leftPct: 0, widthPct: 100 });
+        continue;
+      }
+
+      const overlapping = dayAppts.filter(other => {
+        const os = parseISO(other.startTime).getTime();
+        const oe = parseISO(other.endTime).getTime();
+        if (Number.isNaN(os) || Number.isNaN(oe)) return false;
+        return intervalsOverlap(s, e, os, oe);
+      });
+      overlapping.sort((a, b) => a.id.localeCompare(b.id));
+      const idx = overlapping.findIndex(o => o.id === appt.id);
+      const n = Math.max(1, overlapping.length);
+      map.set(appt.id, {
+        leftPct: (idx / n) * 100,
+        widthPct: 100 / n,
+      });
+    } catch {
+      map.set(appt.id, { leftPct: 0, widthPct: 100 });
+    }
+  }
+  return map;
+}
+
+/** md+: calendar navigates by week; mobile: by day. Must use one date so fetched range matches the visible day. */
+function useIsDesktop(minWidth = 768): boolean {
+  const getSnapshot = () =>
+    typeof window !== 'undefined' && window.matchMedia(`(min-width: ${minWidth}px)`).matches;
+  const [isDesktop, setIsDesktop] = useState(getSnapshot);
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${minWidth}px)`);
+    const onChange = () => setIsDesktop(mq.matches);
+    setIsDesktop(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [minWidth]);
+  return isDesktop;
+}
+
 export const CalendarPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const [weekStart, setWeekStart] = useState(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 })
+  const isDesktop = useIsDesktop(768);
+  /** Single anchor: the week we load is always startOfWeek(viewDate). On mobile the visible day is viewDate. */
+  const [viewDate, setViewDate] = useState(() => new Date());
+  const weekStart = useMemo(
+    () => startOfWeek(viewDate, { weekStartsOn: 1 }),
+    [viewDate]
   );
   const [selectedStaffId, setSelectedStaffId] = useState<string>('all');
   const [selectedAppt, setSelectedAppt] = useState<Appointment | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [createModalDate, setCreateModalDate] = useState<Date | undefined>(undefined);
-  const [mobileDay, setMobileDay] = useState(() => new Date()); // single-day for mobile
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editAppointmentId, setEditAppointmentId] = useState<string | undefined>(undefined);
+  const [completeActionError, setCompleteActionError] = useState<string | null>(null);
 
   // ── Drag state ───────────────────────────────────────────────────────────
   // Use a single state object + refs so mouse handlers never read stale values.
@@ -90,30 +162,26 @@ export const CalendarPage: React.FC = () => {
     staleTime: 5 * 60 * 1000, // 5 min — settings don't change often
   });
 
-  const dayStart = useMemo(() => {
-    if (!workingHoursData || workingHoursData.length === 0) return FALLBACK_DAY_START;
+  /** Working hours from settings (used for “neradni dan” + default grid). */
+  const workingHoursBounds = useMemo(() => {
+    if (!workingHoursData || workingHoursData.length === 0) {
+      return { start: FALLBACK_DAY_START, end: FALLBACK_DAY_END };
+    }
     const workingDays = workingHoursData.filter(d => d.isWorkingDay);
-    if (workingDays.length === 0) return FALLBACK_DAY_START;
+    if (workingDays.length === 0) {
+      return { start: FALLBACK_DAY_START, end: FALLBACK_DAY_END };
+    }
     const minHour = Math.min(...workingDays.map(d => parseInt(d.startTime.slice(0, 2), 10)));
-    return isNaN(minHour) ? FALLBACK_DAY_START : Math.max(0, minHour);
-  }, [workingHoursData]);
-
-  const dayEnd = useMemo(() => {
-    if (!workingHoursData || workingHoursData.length === 0) return FALLBACK_DAY_END;
-    const workingDays = workingHoursData.filter(d => d.isWorkingDay);
-    if (workingDays.length === 0) return FALLBACK_DAY_END;
     const maxHour = Math.max(...workingDays.map(d => {
       const h = parseInt(d.endTime.slice(0, 2), 10);
       const m = parseInt(d.endTime.slice(3, 5), 10);
-      return m > 0 ? h + 1 : h; // round up if minutes > 0
+      return m > 0 ? h + 1 : h;
     }));
-    return isNaN(maxHour) ? FALLBACK_DAY_END : Math.min(24, maxHour);
+    return {
+      start: isNaN(minHour) ? FALLBACK_DAY_START : Math.max(0, minHour),
+      end: isNaN(maxHour) ? FALLBACK_DAY_END : Math.min(24, maxHour),
+    };
   }, [workingHoursData]);
-
-  const hours = useMemo(
-    () => Array.from({ length: dayEnd - dayStart }, (_, i) => dayStart + i),
-    [dayStart, dayEnd]
-  );
 
   // Build a Set of non-working day-of-week indices (0=Sunday)
   const nonWorkingDays = useMemo(() => {
@@ -127,6 +195,43 @@ export const CalendarPage: React.FC = () => {
 
   const appointments = appointmentsData?.items ?? [];
 
+  /**
+   * Visible hour range for the grid: union of working hours and any loaded appointments.
+   * Otherwise blocks for times outside working hours were positioned below a too-short column
+   * and clipped by `.calendar-grid { overflow: hidden }` — looked like “no appointments”.
+   */
+  const { dayStart, dayEnd } = useMemo(() => {
+    let start = workingHoursBounds.start;
+    let end = workingHoursBounds.end;
+
+    for (const appt of appointments) {
+      try {
+        const s = parseISO(appt.startTime);
+        const e = parseISO(appt.endTime);
+        if (Number.isNaN(s.getTime()) || Number.isNaN(e.getTime())) continue;
+
+        start = Math.min(start, s.getHours());
+
+        const endTotalMinutes = e.getHours() * 60 + e.getMinutes() + (e.getSeconds() > 0 ? 1 : 0);
+        const endHourCeil = Math.min(24, Math.ceil(endTotalMinutes / 60));
+        end = Math.max(end, endHourCeil);
+      } catch {
+        /* skip */
+      }
+    }
+
+    end = Math.max(end, start + 1);
+    end = Math.min(24, end);
+    start = Math.max(0, Math.min(23, start));
+
+    return { dayStart: start, dayEnd: end };
+  }, [workingHoursBounds.start, workingHoursBounds.end, appointments]);
+
+  const hours = useMemo(
+    () => Array.from({ length: dayEnd - dayStart }, (_, i) => dayStart + i),
+    [dayStart, dayEnd]
+  );
+
   const cancelMutation = useMutation({
     mutationFn: (id: string) => cancelAppointment(id),
     onSuccess: async () => {
@@ -137,18 +242,21 @@ export const CalendarPage: React.FC = () => {
 
   const completeMutation = useMutation({
     mutationFn: (id: string) => completeAppointment(id),
-    onMutate: (id) => {
-      // Optimistic: immediately update the selected appointment badge
-      setSelectedAppt(prev => prev && prev.id === id ? { ...prev, status: 'Completed' } : prev);
+    onMutate: () => {
+      setCompleteActionError(null);
     },
     onSuccess: async () => {
+      setCompleteActionError(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
       setSelectedAppt(null);
     },
-    onError: (_err, id) => {
-      // Rollback optimistic update — reopen detail from cache
-      const cached = appointments.find(a => a.id === id);
-      if (cached) setSelectedAppt(cached);
+    onError: (err: AxiosError<{ detail?: string; title?: string }>) => {
+      const data = err.response?.data;
+      const msg =
+        (typeof data?.detail === 'string' && data.detail) ||
+        (typeof data?.title === 'string' && data.title) ||
+        'Neuspešno završavanje termina.';
+      setCompleteActionError(msg);
     },
   });
 
@@ -161,14 +269,12 @@ export const CalendarPage: React.FC = () => {
   });
 
   const getAppointmentsForDay = useCallback((day: Date) => {
+    const dayKey = format(day, 'yyyy-MM-dd');
     return appointments.filter(appt => {
       try {
         const apptStart = parseISO(appt.startTime);
-        return (
-          apptStart.getFullYear() === day.getFullYear() &&
-          apptStart.getMonth() === day.getMonth() &&
-          apptStart.getDate() === day.getDate()
-        );
+        if (Number.isNaN(apptStart.getTime())) return false;
+        return format(apptStart, 'yyyy-MM-dd') === dayKey;
       } catch {
         return false;
       }
@@ -312,8 +418,7 @@ export const CalendarPage: React.FC = () => {
         <div className="flex items-center gap-1">
           <button
             onClick={() => {
-              setWeekStart(w => subWeeks(w, 1));
-              setMobileDay(d => subDays(d, 1));
+              setViewDate(d => (isDesktop ? subWeeks(d, 1) : subDays(d, 1)));
             }}
             className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-all duration-200"
           >
@@ -324,13 +429,12 @@ export const CalendarPage: React.FC = () => {
               {format(weekStart, 'MMM d', { locale: srLatn })} – {format(addDays(weekStart, 6), 'MMM d, yyyy', { locale: srLatn })}
             </span>
             <span className="md:hidden">
-              {format(mobileDay, 'EEE, d. MMM', { locale: srLatn })}
+              {format(viewDate, 'EEE, d. MMM', { locale: srLatn })}
             </span>
           </span>
           <button
             onClick={() => {
-              setWeekStart(w => addWeeks(w, 1));
-              setMobileDay(d => addDays(d, 1));
+              setViewDate(d => (isDesktop ? addWeeks(d, 1) : addDays(d, 1)));
             }}
             className="p-1.5 rounded-lg hover:bg-surface-2 text-text-muted transition-all duration-200"
           >
@@ -342,8 +446,7 @@ export const CalendarPage: React.FC = () => {
           variant="secondary"
           size="sm"
           onClick={() => {
-            setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
-            setMobileDay(new Date());
+            setViewDate(new Date());
             requestAnimationFrame(() => {
               if (gridScrollRef.current) {
                 const now = new Date();
@@ -442,8 +545,10 @@ export const CalendarPage: React.FC = () => {
               </div>
 
               {/* Day columns */}
-              {weekDays.map((day, dayIndex) => {
+              {weekDays.map(day => {
                 const off = isDayOff(day);
+                const dayAppts = getAppointmentsForDay(day);
+                const overlapLayout = layoutOverlappingAppointments(dayAppts);
                 return (
                 <div
                   key={day.toISOString()}
@@ -486,17 +591,28 @@ export const CalendarPage: React.FC = () => {
                   })()}
 
                   {/* Appointment blocks */}
-                  {getAppointmentsForDay(day).map(appt => {
+                  {dayAppts.map(appt => {
                     const { top, height } = getApptPosition(appt);
                     const isDragging = dragState?.appt.id === appt.id;
+                    const col = overlapLayout.get(appt.id);
 
                     if (isDragging) {
+                      const colStyle: React.CSSProperties | undefined = col
+                        ? {
+                            left: `${col.leftPct}%`,
+                            width: `${col.widthPct}%`,
+                            right: 'auto',
+                            boxSizing: 'border-box',
+                            paddingLeft: 2,
+                            paddingRight: 2,
+                          }
+                        : undefined;
                       return (
                         <React.Fragment key={appt.id}>
                           {/* Original position — faded */}
                           <div
                             className="appt-block appt-block-default opacity-20 pointer-events-none"
-                            style={{ top, height: Math.max(height - 4, 20) }}
+                            style={{ top, height: Math.max(height - 4, 20), ...colStyle }}
                           >
                             <p className="text-[11px] font-semibold leading-tight truncate">{appt.clientName}</p>
                           </div>
@@ -508,6 +624,7 @@ export const CalendarPage: React.FC = () => {
                               height: Math.max(height - 4, 20),
                               zIndex: 50,
                               opacity: 0.9,
+                              ...colStyle,
                             }}
                           >
                             <p className="text-[11px] font-semibold leading-tight truncate">
@@ -527,6 +644,8 @@ export const CalendarPage: React.FC = () => {
                         appointment={appt}
                         topPx={top}
                         heightPx={height}
+                        columnLayout={col}
+                        showStaffLabel={selectedStaffId === 'all'}
                         onClick={setSelectedAppt}
                         onDragStart={handleDragStart}
                       />
@@ -562,14 +681,14 @@ export const CalendarPage: React.FC = () => {
                     key={hour}
                     className="calendar-slot"
                     onDoubleClick={() => {
-                      if (isDayOff(mobileDay)) return;
-                      handleSlotDoubleClick(mobileDay, hour);
+                      if (isDayOff(viewDate)) return;
+                      handleSlotDoubleClick(viewDate, hour);
                     }}
                   />
                 ))}
 
                 {/* Current time indicator */}
-                {isToday(mobileDay) && (() => {
+                {isToday(viewDate) && (() => {
                   const now = new Date();
                   const h = now.getHours();
                   const m = now.getMinutes();
@@ -588,19 +707,26 @@ export const CalendarPage: React.FC = () => {
                 })()}
 
                 {/* Appointments for this day */}
-                {getAppointmentsForDay(mobileDay).map(appt => {
-                  const { top, height } = getApptPosition(appt);
-                  return (
-                    <AppointmentBlock
-                      key={appt.id}
-                      appointment={appt}
-                      topPx={top}
-                      heightPx={height}
-                      onClick={setSelectedAppt}
-                      onDragStart={handleDragStart}
-                    />
-                  );
-                })}
+                {(() => {
+                  const mobileDayAppts = getAppointmentsForDay(viewDate);
+                  const mobileOverlap = layoutOverlappingAppointments(mobileDayAppts);
+                  return mobileDayAppts.map(appt => {
+                    const { top, height } = getApptPosition(appt);
+                    const col = mobileOverlap.get(appt.id);
+                    return (
+                      <AppointmentBlock
+                        key={appt.id}
+                        appointment={appt}
+                        topPx={top}
+                        heightPx={height}
+                        columnLayout={col}
+                        showStaffLabel={selectedStaffId === 'all'}
+                        onClick={setSelectedAppt}
+                        onDragStart={handleDragStart}
+                      />
+                    );
+                  });
+                })()}
               </div>
             </div>
           )}
@@ -610,7 +736,10 @@ export const CalendarPage: React.FC = () => {
       {/* Appointment detail modal */}
       <Modal
         isOpen={!!selectedAppt}
-        onClose={() => setSelectedAppt(null)}
+        onClose={() => {
+          setSelectedAppt(null);
+          setCompleteActionError(null);
+        }}
         title="Detalji termina"
       >
         {selectedAppt && (
@@ -639,6 +768,19 @@ export const CalendarPage: React.FC = () => {
                 <p className="text-text-faint text-xs">Cena</p>
                 <p className="text-text font-medium">{new Intl.NumberFormat('sr-Latn-RS', { style: 'currency', currency: 'RSD', minimumFractionDigits: 0 }).format(selectedAppt.price)}</p>
               </div>
+              {typeof selectedAppt.visitNumber === 'number' && (
+                <div className="col-span-2 rounded-lg border border-amber-500/30 bg-amber-500/[0.07] px-3 py-2">
+                  <p className="text-text-faint text-xs">Lojalnost</p>
+                  <p className="text-text text-sm">
+                    <strong>{selectedAppt.visitNumber}. poseta</strong> ovog klijenta
+                    {selectedAppt.isLoyaltyMilestoneVisit && (
+                      <span className="block mt-1 text-xs font-semibold text-amber-800">
+                        Jubilarna poseta — dosegnut prag iz loyalty programa (podešavanja).
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
             </div>
             {selectedAppt.notes && (
               <div>
@@ -647,15 +789,37 @@ export const CalendarPage: React.FC = () => {
               </div>
             )}
             {/* Actions */}
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-divider">
+            <div className="flex flex-col gap-2 pt-2 border-t border-divider">
+              {completeActionError && (
+                <p className="text-[12px] text-error bg-error-bg/50 border border-error/20 rounded-md px-2 py-1.5">
+                  {completeActionError}
+                </p>
+              )}
+              {selectedAppt.status !== 'Completed' && selectedAppt.status !== 'Cancelled' && !isAppointmentEnded(selectedAppt) && (
+                <p className="text-[11px] text-text-faint">
+                  Termin možete označiti kao završen tek kada prođe zakazano vreme (kraj termina).
+                </p>
+              )}
+            <div className="flex flex-wrap gap-2">
               {selectedAppt.status !== 'Completed' && selectedAppt.status !== 'Cancelled' && (
                 <>
                   <Button
                     variant="secondary"
                     size="sm"
+                    onClick={() => {
+                      setEditAppointmentId(selectedAppt.id);
+                      setEditModalOpen(true);
+                    }}
+                  >
+                    Izmeni
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={() => completeMutation.mutate(selectedAppt.id)}
-                    disabled={completeMutation.isPending}
+                    disabled={completeMutation.isPending || !isAppointmentEnded(selectedAppt)}
                     loading={completeMutation.isPending}
+                    title={!isAppointmentEnded(selectedAppt) ? 'Dostupno nakon završetka zakazanog termina' : undefined}
                   >
                     Završi
                   </Button>
@@ -671,6 +835,7 @@ export const CalendarPage: React.FC = () => {
                 </>
               )}
             </div>
+            </div>
           </div>
         )}
       </Modal>
@@ -679,6 +844,20 @@ export const CalendarPage: React.FC = () => {
         isOpen={createModalOpen}
         onClose={handleCreateModalClose}
         initialDate={createModalDate}
+      />
+
+      <CreateAppointmentModal
+        isOpen={editModalOpen}
+        onClose={() => {
+          setEditModalOpen(false);
+          setEditAppointmentId(undefined);
+        }}
+        appointmentId={editAppointmentId}
+        onUpdated={() => {
+          setSelectedAppt(null);
+          setEditModalOpen(false);
+          setEditAppointmentId(undefined);
+        }}
       />
     </div>
   );

@@ -29,6 +29,15 @@ export interface AuthResponse {
   refreshToken: string;
   user: AuthUser;
   requiresEmailVerification?: boolean;
+  plan?: TenantPlan;
+  features?: TenantFeatures;
+}
+
+export type TenantPlan = 'Basic' | 'Standard' | 'Pro';
+
+export interface TenantFeatures {
+  canUseOnlineBooking: boolean;
+  maxStaffMembers: number;
 }
 
 export interface RefreshTokenRequest {
@@ -100,6 +109,10 @@ export interface Appointment {
   status: AppointmentStatus;
   notes?: string;
   price: number;
+  /** Redni broj posete za klijenta (1 = prva) — izračunato od završenih termina pre ovog. */
+  visitNumber?: number;
+  /** true ako visitNumber odgovara pragu iz loyalty podešavanja (npr. 10, 25, 50, 100). */
+  isLoyaltyMilestoneVisit?: boolean;
 }
 
 export interface AppointmentListResponse {
@@ -133,6 +146,14 @@ export interface Client {
   lastVisit?: string;
   createdAt: string;
   loyalty?: ClientLoyalty;
+  visitHistory?: ClientVisitHistoryItem[];
+}
+
+export interface ClientVisitHistoryItem {
+  date: string;
+  serviceName: string;
+  staffName: string;
+  price: number;
 }
 
 export interface ClientLoyalty {
@@ -295,6 +316,7 @@ export interface TenantInfo {
   city?: string;
   isActive: boolean;
   emailVerified: boolean;
+  plan: TenantPlan;
   subscriptionStatus: string;
   subscriptionEndDate?: string;
   daysRemaining?: number;

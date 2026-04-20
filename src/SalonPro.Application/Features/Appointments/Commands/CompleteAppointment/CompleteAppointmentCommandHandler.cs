@@ -1,4 +1,5 @@
 using MediatR;
+using SalonPro.Application.Common;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Domain.Entities;
 using SalonPro.Domain.Enums;
@@ -23,6 +24,12 @@ public class CompleteAppointmentCommandHandler : IRequestHandler<CompleteAppoint
         if (appointment.Status == AppointmentStatus.Cancelled)
         {
             throw new ForbiddenAccessException("Nije moguće završiti otkazan termin.");
+        }
+
+        if (!AppointmentLocalTime.IsEnded(appointment.EndTime, DateTime.UtcNow))
+        {
+            throw new ValidationException(
+                "Ne možete označiti termin kao završen dok ne istekne zakazano vreme termina.");
         }
 
         appointment.Status = AppointmentStatus.Completed;

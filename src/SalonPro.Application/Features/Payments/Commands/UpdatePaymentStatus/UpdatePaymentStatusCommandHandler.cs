@@ -55,6 +55,7 @@ public class UpdatePaymentStatusCommandHandler : IRequestHandler<UpdatePaymentSt
 
                 tenant.IsTrialing = false;
                 tenant.IsActive = true;
+                tenant.SubscriptionExpiryWarningSentUtc = null;
 
                 _unitOfWork.Tenants.Update(tenant);
 

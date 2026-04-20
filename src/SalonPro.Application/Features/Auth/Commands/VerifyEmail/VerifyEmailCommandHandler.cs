@@ -49,6 +49,7 @@ public class VerifyEmailCommandHandler : IRequestHandler<VerifyEmailCommand, Ver
         tenant.IsTrialing = true;
         tenant.SubscriptionStartDate = now;
         tenant.SubscriptionEndDate = now.AddDays(30);
+        tenant.SubscriptionExpiryWarningSentUtc = null;
 
         _unitOfWork.Tenants.Update(tenant);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

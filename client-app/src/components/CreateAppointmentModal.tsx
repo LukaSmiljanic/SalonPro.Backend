@@ -4,7 +4,7 @@ import { format, setHours, setMinutes } from 'date-fns';
 import { getClients } from '../api/clients';
 import { getStaff } from '../api/staff';
 import { getServices } from '../api/services';
-import { createAppointment } from '../api/appointments';
+import { createAppointment, getAppointmentDetail, updateAppointment } from '../api/appointments';
 import { getWorkingHours } from '../api/settings';
 import type { Client, StaffMember, Service, CreateAppointmentRequest } from '../types';
 import { queryKeys } from '../lib/queryKeys';
@@ -32,14 +32,18 @@ interface CreateAppointmentModalProps {
   onClose: () => void;
   /** Optional: callback after create (e.g. navigate). Invalidation is done via React Query. */
   onCreated?: () => void;
+  onUpdated?: () => void;
   initialDate?: Date;
+  appointmentId?: string;
 }
 
 export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   isOpen,
   onClose,
   onCreated,
+  onUpdated,
   initialDate,
+  appointmentId,
 }) => {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +54,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   const [date, setDate] = useState('');
   const [time, setTime] = useState('09:00');
   const [notes, setNotes] = useState('');
+  const isEditMode = Boolean(appointmentId);
 
   const { data: clientsData, isLoading: loadingData } = useQuery({
     queryKey: queryKeys.clients.list({ page: 1, pageSize: 500 }),
@@ -73,6 +78,12 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     queryKey: queryKeys.settings.workingHours(),
     queryFn: getWorkingHours,
     enabled: isOpen,
+  });
+
+  const { data: appointmentDetail, isLoading: loadingAppointmentDetail } = useQuery({
+    queryKey: ['appointment-detail', appointmentId],
+    queryFn: () => getAppointmentDetail(appointmentId!),
+    enabled: isOpen && !!appointmentId,
   });
 
   const timeSlots = useMemo(() => {
@@ -107,18 +118,49 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: updateAppointment,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      onUpdated?.();
+      handleClose();
+    },
+    onError: (err: unknown) => {
+      const message = err && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
+        : 'Failed to update appointment.';
+      setError(typeof message === 'string' ? message : 'Nije moguće izmeniti termin.');
+    },
+  });
+
   const clients = clientsData?.items ?? [];
 
   useEffect(() => {
-    if (isOpen && initialDate) {
+    if (!isOpen || isEditMode) return;
+
+    if (initialDate) {
       setDate(format(initialDate, 'yyyy-MM-dd'));
       setTime(format(initialDate, 'HH:mm'));
-    } else if (isOpen && !date) {
+    } else if (!date) {
       const today = new Date();
       setDate(format(today, 'yyyy-MM-dd'));
       setTime('09:00');
     }
-  }, [isOpen, initialDate]);
+  }, [isOpen, initialDate, isEditMode, date]);
+
+  useEffect(() => {
+    if (!isOpen || !isEditMode || !appointmentDetail) return;
+
+    const start = new Date(appointmentDetail.startTime);
+    setClientId(appointmentDetail.clientId);
+    setStaffId(appointmentDetail.staffMemberId);
+    setServiceId(appointmentDetail.services?.[0]?.serviceId ?? '');
+    setDate(format(start, 'yyyy-MM-dd'));
+    setTime(format(start, 'HH:mm'));
+    setNotes(appointmentDetail.notes ?? '');
+    setError(null);
+  }, [isOpen, isEditMode, appointmentDetail]);
 
   const resetForm = () => {
     setClientId('');
@@ -147,6 +189,18 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     const [hours, minutes] = time.split(':').map(Number);
     const startDateTime = setMinutes(setHours(new Date(year, month - 1, day), hours), minutes);
     const startTimeIso = toLocalISOString(startDateTime);
+    if (isEditMode && appointmentId) {
+      updateMutation.mutate({
+        id: appointmentId,
+        clientId,
+        staffId,
+        serviceId,
+        startTime: startTimeIso,
+        notes: notes.trim() || undefined,
+      });
+      return;
+    }
+
     createMutation.mutate({
       clientId,
       staffId,
@@ -156,23 +210,26 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     });
   };
 
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+  const isLoadingForm = loadingData || loadingAppointmentDetail;
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Novi termin"
+      title={isEditMode ? 'Izmeni termin' : 'Novi termin'}
       footer={
         <>
-          <Button variant="secondary" onClick={handleClose} disabled={createMutation.isPending}>
+          <Button variant="secondary" onClick={handleClose} disabled={isSubmitting}>
             Odustani
           </Button>
-          <Button onClick={handleSubmit} loading={createMutation.isPending} disabled={loadingData}>
-            Kreiraj
+          <Button onClick={handleSubmit} loading={isSubmitting} disabled={isLoadingForm}>
+            {isEditMode ? 'Sačuvaj' : 'Kreiraj'}
           </Button>
         </>
       }
     >
-      {loadingData ? (
+      {isLoadingForm ? (
         <div className="flex justify-center py-8">
           <LoadingSpinner />
         </div>

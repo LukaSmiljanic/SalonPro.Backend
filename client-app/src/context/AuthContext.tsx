@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { AuthUser, AuthResponse } from '../types';
+import type { AuthUser, AuthResponse, TenantFeatures, TenantPlan } from '../types';
 import { login as apiLogin, register as apiRegister } from '../api/auth';
 import type { LoginRequest, RegisterRequest } from '../types';
 import {
@@ -14,6 +14,8 @@ import {
 
 interface AuthContextType {
   user: AuthUser | null;
+  plan: TenantPlan;
+  features: TenantFeatures;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (data: LoginRequest) => Promise<void>;
@@ -23,8 +25,21 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const AUTH_META_KEY = 'salonpro_auth_meta';
+const defaultFeatures: TenantFeatures = {
+  canUseOnlineBooking: false,
+  maxStaffMembers: 1,
+};
+
+type StoredAuthMeta = {
+  plan?: TenantPlan;
+  features?: TenantFeatures;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [plan, setPlan] = useState<TenantPlan>('Basic');
+  const [features, setFeatures] = useState<TenantFeatures>(defaultFeatures);
   const [isLoading, setIsLoading] = useState(true);
 
   // Restore session from localStorage
@@ -33,6 +48,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const tenantId = getStoredTenantId();
     if (token && tenantId) {
       try {
+        const storedMetaRaw = localStorage.getItem(AUTH_META_KEY);
+        if (storedMetaRaw) {
+          const parsed = JSON.parse(storedMetaRaw) as StoredAuthMeta;
+          if (parsed.plan) setPlan(parsed.plan);
+          if (parsed.features) setFeatures(parsed.features);
+        }
+
         const payload = decodeJwtPayload(token);
         const exp = payload['exp'] as number | undefined;
         if (exp && exp * 1000 < Date.now()) {
@@ -53,6 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } catch {
         clearStoredAuth();
+        localStorage.removeItem(AUTH_META_KEY);
       }
     }
     setIsLoading(false);
@@ -64,6 +87,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setStoredRefreshToken(response.refreshToken);
     setStoredTenantId(response.user.tenantId);
     setUser(response.user);
+    setPlan(response.plan ?? 'Basic');
+    setFeatures(response.features ?? defaultFeatures);
+    localStorage.setItem(AUTH_META_KEY, JSON.stringify({
+      plan: response.plan ?? 'Basic',
+      features: response.features ?? defaultFeatures,
+    }));
   }, []);
 
   const register = useCallback(async (data: RegisterRequest): Promise<AuthResponse> => {
@@ -74,6 +103,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setStoredRefreshToken(response.refreshToken);
       setStoredTenantId(response.user.tenantId);
       setUser(response.user);
+      setPlan(response.plan ?? 'Basic');
+      setFeatures(response.features ?? defaultFeatures);
+      localStorage.setItem(AUTH_META_KEY, JSON.stringify({
+        plan: response.plan ?? 'Basic',
+        features: response.features ?? defaultFeatures,
+      }));
     }
     return response;
   }, []);
@@ -81,10 +116,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = useCallback(() => {
     clearStoredAuth();
     setUser(null);
+    setPlan('Basic');
+    setFeatures(defaultFeatures);
+    localStorage.removeItem(AUTH_META_KEY);
   }, []);
 
   const value: AuthContextType = {
     user,
+    plan,
+    features,
     isLoading,
     isAuthenticated: user !== null,
     login,

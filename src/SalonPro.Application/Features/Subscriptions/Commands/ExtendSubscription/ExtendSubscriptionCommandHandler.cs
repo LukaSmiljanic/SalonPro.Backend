@@ -40,6 +40,8 @@ public class ExtendSubscriptionCommandHandler : IRequestHandler<ExtendSubscripti
 
         tenant.SubscriptionEndDate = startFrom.AddDays(request.Days);
         tenant.IsTrialing = false; // Manual extension = paid subscription
+        tenant.IsActive = true; // Reactivate immediately instead of waiting for the background job
+        tenant.SubscriptionExpiryWarningSentUtc = null;
 
         if (!tenant.SubscriptionStartDate.HasValue)
             tenant.SubscriptionStartDate = now;

@@ -313,12 +313,25 @@ export const ServicesPage: React.FC = () => {
               ))}
             </select>
           </div>
-          <Input
-            label="Boja (hex, opciono)"
-            value={categoryForm.colorHex ?? ''}
-            onChange={e => setCategoryForm(f => ({ ...f, colorHex: e.target.value || undefined }))}
-            placeholder="#5B3A8C"
-          />
+          <div>
+            <label className="block text-sm font-medium text-text mb-1">Boja kategorije</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={categoryForm.colorHex ?? '#5B3A8C'}
+                onChange={e => setCategoryForm(f => ({ ...f, colorHex: e.target.value }))}
+                className="h-10 w-12 cursor-pointer rounded border border-border bg-surface p-1"
+                aria-label="Izaberite boju kategorije"
+              />
+              <input
+                type="text"
+                value={categoryForm.colorHex ?? '#5B3A8C'}
+                onChange={e => setCategoryForm(f => ({ ...f, colorHex: e.target.value || '#5B3A8C' }))}
+                className="w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
+                placeholder="#5B3A8C"
+              />
+            </div>
+          </div>
         </div>
       </Modal>
 

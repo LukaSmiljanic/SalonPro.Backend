@@ -17,6 +17,7 @@ public class SubscriptionCheckMiddleware
     private static readonly string[] ExemptPrefixes =
     [
         "/api/auth/",
+        "/api/public/",
         "/api/payments",
         "/api/subscriptions",
         "/api/tenants",

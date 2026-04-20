@@ -18,4 +18,16 @@ public class AuthResponseDto
 
     /// <summary>When subscription/trial expires (UTC).</summary>
     public DateTime? SubscriptionEndDate { get; set; }
+
+    /// <summary>Tenant plan: Basic, Standard, Pro.</summary>
+    public string? Plan { get; set; }
+
+    /// <summary>Feature flags derived from tenant plan.</summary>
+    public TenantPlanFeaturesDto? Features { get; set; }
+}
+
+public class TenantPlanFeaturesDto
+{
+    public bool CanUseOnlineBooking { get; set; }
+    public int MaxStaffMembers { get; set; }
 }

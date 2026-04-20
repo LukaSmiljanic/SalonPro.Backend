@@ -11,6 +11,8 @@ interface AppointmentByDateItem {
   status: string;
   totalPrice: number;
   notes?: string | null;
+  visitNumber?: number;
+  isLoyaltyMilestoneVisit?: boolean;
   services?: Array<{ serviceId: string; serviceName: string; price: number; durationMinutes: number }>;
 }
 
@@ -56,6 +58,8 @@ function mapAppointmentFromApi(item: AppointmentByDateItem): Appointment {
     status: statusMap[item.status] ?? 'Pending',
     notes: item.notes ?? undefined,
     price: item.totalPrice,
+    visitNumber: item.visitNumber,
+    isLoyaltyMilestoneVisit: item.isLoyaltyMilestoneVisit,
   };
 }
 
@@ -169,6 +173,27 @@ export const rescheduleAppointment = async (
     startTime: newStartTime,
     serviceIds: serviceIds.length > 0 ? serviceIds : [],
     notes: detail.notes ?? null,
+    status: detail.status,
+  });
+};
+
+export const updateAppointment = async (params: {
+  id: string;
+  clientId: string;
+  staffId: string;
+  serviceId: string;
+  startTime: string;
+  notes?: string;
+}): Promise<void> => {
+  const detail = await getAppointmentDetail(params.id);
+
+  await apiClient.put(`/appointments/${params.id}`, {
+    id: params.id,
+    clientId: params.clientId,
+    staffMemberId: params.staffId,
+    startTime: params.startTime,
+    serviceIds: [params.serviceId],
+    notes: params.notes ?? null,
     status: detail.status,
   });
 };

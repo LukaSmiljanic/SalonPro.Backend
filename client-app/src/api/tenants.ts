@@ -1,9 +1,13 @@
 import apiClient from './client';
-import type { TenantInfo } from '../types';
+import type { TenantInfo, TenantPlan } from '../types';
 
 export const getTenants = async (): Promise<TenantInfo[]> => {
   const { data } = await apiClient.get('/tenants');
   return data;
+};
+
+export const updateTenantPlan = async (tenantId: string, plan: TenantPlan): Promise<void> => {
+  await apiClient.put(`/tenants/${tenantId}/plan`, { plan });
 };
 
 export interface ExtendSubscriptionRequest {

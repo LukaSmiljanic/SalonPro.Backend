@@ -233,7 +233,9 @@ input, textarea, select {
 .calendar-grid {
   display: grid;
   grid-template-columns: 60px repeat(7, 1fr);
-  overflow: hidden;
+  /* Don't clip absolutely positioned appointment blocks that extend past the last hour row */
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .calendar-time-col {

@@ -18,5 +18,8 @@ public record AppointmentDto(
     AppointmentStatus Status,
     decimal TotalPrice,
     string? Notes,
-    List<AppointmentServiceDto> Services
+    List<AppointmentServiceDto> Services,
+    /// <summary>1-based visit index for this client if this appointment is honored in order (completed visits before this slot + 1).</summary>
+    int VisitNumber,
+    bool IsLoyaltyMilestoneVisit
 );
