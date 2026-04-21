@@ -25,6 +25,11 @@ public class GetClientsQueryHandler : IRequestHandler<GetClientsQuery, Paginated
                         .ThenInclude(s => s.Category)
             .AsNoTracking();
 
+        if (!request.IncludeInactive)
+        {
+            query = query.Where(c => c.IsActive);
+        }
+
         if (!string.IsNullOrWhiteSpace(request.SearchTerm))
         {
             var term = request.SearchTerm.ToLower();
@@ -40,6 +45,7 @@ public class GetClientsQueryHandler : IRequestHandler<GetClientsQuery, Paginated
             c.FirstName + " " + c.LastName,
             c.Phone,
             c.Email,
+            c.IsActive,
             c.Appointments
                 .Where(a => a.Status == AppointmentStatus.Completed)
                 .OrderByDescending(a => a.StartTime)

@@ -153,7 +153,8 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
         var thisWeekStart = today.AddDays(-(int)today.DayOfWeek + 1); // Monday
         if (today.DayOfWeek == DayOfWeek.Sunday) thisWeekStart = today.AddDays(-6);
         var lastWeekStart = thisWeekStart.AddDays(-7);
-        var lastWeekEnd = thisWeekStart;
+        var elapsedDaysInCurrentWeek = (today - thisWeekStart).Days + 1;
+        var lastWeekComparableEnd = lastWeekStart.AddDays(elapsedDaysInCurrentWeek);
 
         var thisWeekRevenue = await appointments
             .Where(a => a.StartTime >= thisWeekStart && a.StartTime < today.AddDays(1)
@@ -161,7 +162,7 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
             .SumAsync(a => (decimal?)a.TotalPrice, cancellationToken) ?? 0m;
 
         var lastWeekRevenue = await appointments
-            .Where(a => a.StartTime >= lastWeekStart && a.StartTime < lastWeekEnd
+            .Where(a => a.StartTime >= lastWeekStart && a.StartTime < lastWeekComparableEnd
                 && a.Status == AppointmentStatus.Completed)
             .SumAsync(a => (decimal?)a.TotalPrice, cancellationToken) ?? 0m;
 
@@ -175,9 +176,9 @@ public class GetDashboardInsightsQueryHandler : IRequestHandler<GetDashboardInsi
             insights.Add(new InsightDto(
                 InsightType.RevenueChange,
                 Math.Abs(weekChangePercent) > 20 ? InsightPriority.High : InsightPriority.Medium,
-                isPositive ? $"Prihod raste +{weekChangePercent}%" : $"Prihod pao {weekChangePercent}%",
+                isPositive ? $"Prihod raste +{weekChangePercent}%" : $"Prihod pao {Math.Abs(weekChangePercent)}%",
                 isPositive
-                    ? $"Prihod ove nedelje je {weekChangePercent}% veći u odnosu na prošlu. Odlično!"
+                    ? $"Prihod ove nedelje (isti period) je {weekChangePercent}% veći u odnosu na prošlu. Odlično!"
                     : $"Prihod ove nedelje je {Math.Abs(weekChangePercent)}% manji. Razmislite o promocijama.",
                 isPositive ? "TrendingUp" : "TrendingDown"
             ));

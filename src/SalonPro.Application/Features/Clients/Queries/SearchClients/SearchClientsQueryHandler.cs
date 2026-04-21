@@ -24,10 +24,11 @@ public class SearchClientsQueryHandler : IRequestHandler<SearchClientsQuery, Lis
                 .ThenInclude(a => a.AppointmentServices)
                     .ThenInclude(aps => aps.Service)
             .Where(c =>
-                c.FirstName.ToLower().Contains(term) ||
-                c.LastName.ToLower().Contains(term) ||
-                (c.Email != null && c.Email.ToLower().Contains(term)) ||
-                c.Phone.Contains(term))
+                c.IsActive &&
+                (c.FirstName.ToLower().Contains(term) ||
+                 c.LastName.ToLower().Contains(term) ||
+                 (c.Email != null && c.Email.ToLower().Contains(term)) ||
+                 c.Phone.Contains(term)))
             .AsNoTracking()
             .Take(50)
             .ToListAsync(cancellationToken);
@@ -37,6 +38,7 @@ public class SearchClientsQueryHandler : IRequestHandler<SearchClientsQuery, Lis
             c.FullName,
             c.Phone,
             c.Email,
+            c.IsActive,
             c.Appointments
                 .Where(a => a.Status == AppointmentStatus.Completed)
                 .OrderByDescending(a => a.StartTime)

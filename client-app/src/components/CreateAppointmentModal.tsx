@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, setHours, setMinutes } from 'date-fns';
+import { toast } from 'sonner';
 import { getClients } from '../api/clients';
 import { getStaff } from '../api/staff';
 import { getServices } from '../api/services';
-import { createAppointment, getAppointmentDetail, updateAppointment } from '../api/appointments';
+import { createAppointment, getAppointmentDetail, getAppointments, updateAppointment } from '../api/appointments';
 import { getWorkingHours } from '../api/settings';
 import type { Client, StaffMember, Service, CreateAppointmentRequest } from '../types';
 import { queryKeys } from '../lib/queryKeys';
@@ -63,7 +64,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   });
 
   const { data: staff = [] } = useQuery({
-    queryKey: queryKeys.staff.list(),
+    queryKey: queryKeys.staff.list(false),
     queryFn: () => getStaff(),
     enabled: isOpen,
   });
@@ -86,6 +87,12 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     enabled: isOpen && !!appointmentId,
   });
 
+  const { data: dayAppointmentsData, isLoading: loadingDayAppointments } = useQuery({
+    queryKey: queryKeys.appointments.byDate(date || '', staffId || undefined),
+    queryFn: () => getAppointments({ date, staffId }),
+    enabled: isOpen && !!date && !!staffId,
+  });
+
   const timeSlots = useMemo(() => {
     if (!workingHoursData || workingHoursData.length === 0) return DEFAULT_TIME_SLOTS;
     const workingDays = workingHoursData.filter(d => d.isWorkingDay);
@@ -102,11 +109,41 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     );
   }, [workingHoursData]);
 
+  const selectedServiceDuration = useMemo(
+    () => services.find(s => s.id === serviceId)?.duration ?? 0,
+    [services, serviceId]
+  );
+
+  const availableTimeSlots = useMemo(() => {
+    if (!date || !staffId) return timeSlots;
+
+    const appointments = (dayAppointmentsData?.items ?? []).filter(a =>
+      a.status !== 'Cancelled' && a.id !== appointmentId
+    );
+
+    return timeSlots.filter(slot => {
+      const [hours, minutes] = slot.split(':').map(Number);
+      const candidateStart = new Date(`${date}T00:00:00`);
+      candidateStart.setHours(hours, minutes, 0, 0);
+      const assumedDuration = selectedServiceDuration > 0 ? selectedServiceDuration : 15;
+      const candidateEnd = new Date(candidateStart.getTime() + assumedDuration * 60 * 1000);
+
+      return !appointments.some(appt => {
+        const apptStart = new Date(appt.startTime);
+        const apptEnd = new Date(appt.endTime);
+        // Always block any overlap with occupied intervals.
+        // If service is not selected yet, assume a 15-minute slot.
+        return candidateStart < apptEnd && candidateEnd > apptStart;
+      });
+    });
+  }, [date, staffId, selectedServiceDuration, dayAppointmentsData?.items, timeSlots, appointmentId]);
+
   const createMutation = useMutation({
     mutationFn: (payload: CreateAppointmentRequest) => createAppointment(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      toast.success('Termin je uspešno kreiran.');
       onCreated?.();
       handleClose();
     },
@@ -114,7 +151,9 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       const message = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
         : 'Failed to create appointment.';
-      setError(typeof message === 'string' ? message : 'Nije moguće kreirati termin.');
+      const errorMessage = typeof message === 'string' ? message : 'Nije moguće kreirati termin.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     },
   });
 
@@ -123,6 +162,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      toast.success('Termin je uspešno ažuriran.');
       onUpdated?.();
       handleClose();
     },
@@ -130,7 +170,9 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       const message = err && typeof err === 'object' && 'response' in err
         ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail
         : 'Failed to update appointment.';
-      setError(typeof message === 'string' ? message : 'Nije moguće izmeniti termin.');
+      const errorMessage = typeof message === 'string' ? message : 'Nije moguće izmeniti termin.';
+      setError(errorMessage);
+      toast.error(errorMessage);
     },
   });
 
@@ -161,6 +203,15 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     setNotes(appointmentDetail.notes ?? '');
     setError(null);
   }, [isOpen, isEditMode, appointmentDetail]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!time) return;
+    if (availableTimeSlots.length === 0) return;
+    if (!availableTimeSlots.includes(time)) {
+      setTime(availableTimeSlots[0]);
+    }
+  }, [availableTimeSlots, isOpen, time]);
 
   const resetForm = () => {
     setClientId('');
@@ -306,11 +357,25 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
                 onChange={e => setTime(e.target.value)}
                 className="w-full h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3 text-base md:text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
                 required
+                disabled={!date || !staffId || loadingDayAppointments}
               >
-                {timeSlots.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
+                {!date || !staffId ? (
+                  <option value="">Prvo izaberite datum i zaposlenog</option>
+                ) : loadingDayAppointments ? (
+                  <option value="">Učitavanje slobodnih termina…</option>
+                ) : availableTimeSlots.length === 0 ? (
+                  <option value="">Nema slobodnih termina</option>
+                ) : (
+                  availableTimeSlots.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))
+                )}
               </select>
+              {!!date && !!staffId && selectedServiceDuration > 0 && availableTimeSlots.length === 0 && (
+                <p className="mt-1 text-xs text-warning">
+                  Nema slobodnih termina za izabrani dan i zaposlenog.
+                </p>
+              )}
             </div>
           </div>
 

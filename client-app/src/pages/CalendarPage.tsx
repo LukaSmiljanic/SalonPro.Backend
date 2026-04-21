@@ -152,7 +152,7 @@ export const CalendarPage: React.FC = () => {
   });
 
   const { data: staff = [] } = useQuery({
-    queryKey: queryKeys.staff.list(),
+    queryKey: queryKeys.staff.list(false),
     queryFn: () => getStaff(),
   });
 
@@ -236,6 +236,8 @@ export const CalendarPage: React.FC = () => {
     mutationFn: (id: string) => cancelAppointment(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       setSelectedAppt(null);
     },
   });
@@ -248,6 +250,8 @@ export const CalendarPage: React.FC = () => {
     onSuccess: async () => {
       setCompleteActionError(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
       setSelectedAppt(null);
     },
     onError: (err: AxiosError<{ detail?: string; title?: string }>) => {
@@ -265,6 +269,8 @@ export const CalendarPage: React.FC = () => {
       rescheduleAppointment(id, newStartTime),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.appointments.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.reports.all });
     },
   });
 

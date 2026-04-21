@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SalonPro.Application.Common.Exceptions;
 using SalonPro.Domain.Entities;
+using SalonPro.Domain.Enums;
 using SalonPro.Domain.Interfaces;
 using AppointmentServiceEntity = SalonPro.Domain.Entities.AppointmentService;
 
@@ -25,6 +26,8 @@ public class UpdateAppointmentCommandHandler : IRequestHandler<UpdateAppointment
 
         var client = await _unitOfWork.Clients.GetByIdAsync(request.ClientId, cancellationToken)
             ?? throw new NotFoundException(nameof(Client), request.ClientId);
+        if (!client.IsActive)
+            throw new ValidationException("Izabrani klijent je deaktiviran i ne može se koristiti za zakazivanje.");
 
         var staffMember = await _unitOfWork.StaffMembers.GetByIdAsync(request.StaffMemberId, cancellationToken)
             ?? throw new NotFoundException(nameof(StaffMember), request.StaffMemberId);
@@ -45,11 +48,27 @@ public class UpdateAppointmentCommandHandler : IRequestHandler<UpdateAppointment
 
         var totalDuration = services.Sum(s => s.DurationMinutes);
         var totalPrice = services.Sum(s => s.Price);
+        var newEndTime = request.StartTime.AddMinutes(totalDuration);
+
+        var hasConflict = await _unitOfWork.Appointments.Query()
+            .AnyAsync(a =>
+                a.TenantId == appointment.TenantId &&
+                a.Id != appointment.Id &&
+                a.StaffMemberId == request.StaffMemberId &&
+                a.Status != AppointmentStatus.Cancelled &&
+                request.StartTime < a.EndTime &&
+                newEndTime > a.StartTime,
+                cancellationToken);
+
+        if (hasConflict)
+        {
+            throw new ValidationException("Izabrani zaposleni već ima termin u tom vremenskom periodu.");
+        }
 
         appointment.ClientId = request.ClientId;
         appointment.StaffMemberId = request.StaffMemberId;
         appointment.StartTime = request.StartTime;
-        appointment.EndTime = request.StartTime.AddMinutes(totalDuration);
+        appointment.EndTime = newEndTime;
         appointment.TotalPrice = totalPrice;
         appointment.Notes = request.Notes;
         appointment.Status = request.Status;

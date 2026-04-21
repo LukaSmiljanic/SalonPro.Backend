@@ -42,7 +42,7 @@ export const StaffPage: React.FC = () => {
   const [deleteMessage, setDeleteMessage] = useState<string | null>(null);
 
   const { data: staff = [], isLoading } = useQuery({
-    queryKey: queryKeys.staff.list(),
+    queryKey: queryKeys.staff.list(true),
     queryFn: () => getStaff({ includeInactive: true }),
   });
 

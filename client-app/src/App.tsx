@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
 import { Layout } from './components/Layout';
 import { ProtectedRoute, PublicOnlyRoute } from './components/ProtectedRoute';
@@ -20,6 +21,7 @@ const App: React.FC = () => {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <Toaster richColors position="top-right" />
         <Routes>
           {/* Public routes */}
           <Route element={<PublicOnlyRoute />}>

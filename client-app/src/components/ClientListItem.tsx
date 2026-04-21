@@ -22,7 +22,8 @@ export const ClientListItem: React.FC<ClientListItemProps> = ({ client, onClick,
   return (
     <div
       className={`flex items-start gap-3 md:gap-4 p-4 md:p-4 rounded-lg cursor-pointer transition-interactive active:bg-surface-offset
-        ${selected ? 'bg-primary-highlight border border-primary/20' : 'hover:bg-surface-2'}`}
+        ${selected ? 'bg-primary-highlight border border-primary/20' : 'hover:bg-surface-2'}
+        ${client.isActive === false ? 'opacity-50' : ''}`}
       onClick={() => onClick?.(client)}
     >
       {/* Avatar */}
@@ -32,7 +33,14 @@ export const ClientListItem: React.FC<ClientListItemProps> = ({ client, onClick,
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-text text-base md:text-sm truncate">{fullName}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-semibold text-text text-base md:text-sm truncate">{fullName}</p>
+          {client.isActive === false && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-text-faint/10 text-text-faint font-medium shrink-0">
+              Neaktivan
+            </span>
+          )}
+        </div>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
           {client.phone && (
             <span className="flex items-center gap-1 text-sm md:text-xs text-text-muted">

@@ -16,7 +16,7 @@ export const queryKeys = {
   },
   clients: {
     all: ['clients'] as const,
-    list: (params: { search?: string; page: number; pageSize: number }) =>
+    list: (params: { search?: string; page: number; pageSize: number; includeInactive?: boolean }) =>
       [...queryKeys.clients.all, 'list', params] as const,
     detail: (id: string) => [...queryKeys.clients.all, 'detail', id] as const,
     insights: (id: string) => [...queryKeys.clients.all, 'insights', id] as const,
@@ -33,7 +33,8 @@ export const queryKeys = {
   },
   staff: {
     all: ['staff'] as const,
-    list: () => [...queryKeys.staff.all, 'list'] as const,
+    list: (includeInactive?: boolean) =>
+      [...queryKeys.staff.all, 'list', includeInactive ?? false] as const,
   },
   settings: {
     all: ['settings'] as const,

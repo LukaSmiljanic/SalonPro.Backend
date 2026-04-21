@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { Search, Plus, Phone, Mail, Calendar, X, Save, Trash2, UserCircle2, Award, Star, Trophy, Crown, History } from 'lucide-react';
 import { getClients, createClient, updateClient, deleteClient, getClient } from '../api/clients';
 import type { Client, CreateClientRequest, LoyaltyTier } from '../types';
@@ -72,6 +73,7 @@ export const ClientsPage: React.FC = () => {
     firstName: '', lastName: '', email: '', phone: '', notes: '',
   });
   const [formError, setFormError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const targetClientId = searchParams.get('clientId');
 
   useEffect(() => {
@@ -106,11 +108,13 @@ export const ClientsPage: React.FC = () => {
       search: debouncedSearch || undefined,
       page,
       pageSize: PAGE_SIZE,
+      includeInactive: true,
     }),
     queryFn: () => getClients({
       search: debouncedSearch || undefined,
       page,
       pageSize: PAGE_SIZE,
+      includeInactive: true,
     }),
   });
 
@@ -142,6 +146,16 @@ export const ClientsPage: React.FC = () => {
     onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
       if (selectedClient?.id === id) setSelectedClient(null);
+      setDeleteError(null);
+    },
+    onError: (error: unknown) => {
+      let message = 'Nije moguće obrisati klijenta. Pokušajte ponovo.';
+      if (error instanceof AxiosError) {
+        const detail = (error.response?.data as { detail?: string; title?: string } | undefined)?.detail;
+        const title = (error.response?.data as { detail?: string; title?: string } | undefined)?.title;
+        message = detail || title || message;
+      }
+      setDeleteError(message);
     },
   });
 
@@ -187,6 +201,7 @@ export const ClientsPage: React.FC = () => {
 
   const handleDelete = (client: Client) => {
     if (!window.confirm(`Obrisati ${client.firstName} ${client.lastName}? Ova akcija se ne može poništiti.`)) return;
+    setDeleteError(null);
     deleteMutation.mutate(client.id);
   };
 
@@ -204,7 +219,7 @@ export const ClientsPage: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-xl font-semibold text-display text-text">Klijenti</h1>
-              <p className="text-xs text-text-faint mt-0.5">{total} ukupno</p>
+              <p className="text-xs text-text-faint mt-0.5">{total} ukupno (aktivni + neaktivni)</p>
             </div>
             <Button size="sm" icon={<Plus size={13} />} onClick={openNewModal}>
               Dodaj klijenta
@@ -443,11 +458,17 @@ export const ClientsPage: React.FC = () => {
                 variant="danger"
                 size="sm"
                 icon={<Trash2 size={13} />}
+                loading={deleteMutation.isPending}
                 onClick={() => handleDelete(selectedClient)}
               >
                 Obriši
               </Button>
             </div>
+            {deleteError && (
+              <div className="mt-3 p-3 bg-error-bg border border-error/20 rounded-lg text-sm text-error">
+                {deleteError}
+              </div>
+            )}
           </div>
         )}
       </div>

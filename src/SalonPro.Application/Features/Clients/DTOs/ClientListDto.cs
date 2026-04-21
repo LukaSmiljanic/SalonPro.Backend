@@ -5,6 +5,7 @@ public record ClientListDto(
     string FullName,
     string Phone,
     string? Email,
+    bool IsActive,
     DateTime? LastVisitDate,
     string? FavoriteService,
     bool IsVip,

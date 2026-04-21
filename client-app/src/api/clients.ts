@@ -15,6 +15,7 @@ interface ClientListDtoItem {
   fullName: string;
   phone: string;
   email?: string | null;
+  isActive: boolean;
   lastVisitDate?: string | null;
   favoriteService?: string | null;
   isVip: boolean;
@@ -28,6 +29,7 @@ interface ClientDetailDtoResponse {
   firstName: string;
   lastName: string;
   fullName: string;
+  isActive?: boolean;
   email?: string | null;
   phone: string;
   notes?: string | null;
@@ -56,6 +58,7 @@ function mapListDtoToClient(item: ClientListDtoItem): Client {
     id: item.id,
     firstName,
     lastName,
+    isActive: item.isActive,
     email: item.email ?? undefined,
     phone: item.phone,
     notes: undefined,
@@ -82,6 +85,7 @@ function mapDetailDtoToClient(d: ClientDetailDtoResponse): Client {
     id: d.id,
     firstName: d.firstName,
     lastName: d.lastName,
+    isActive: d.isActive ?? true,
     email: d.email ?? undefined,
     phone: d.phone,
     notes: d.notes ?? undefined,
@@ -105,12 +109,14 @@ export const getClients = async (params?: {
   search?: string;
   page?: number;
   pageSize?: number;
+  includeInactive?: boolean;
 }): Promise<ClientListResponse> => {
   const response = await apiClient.get<PaginatedClientsResponse>('/clients', {
     params: {
       pageNumber: params?.page ?? 1,
       pageSize: params?.pageSize ?? 20,
       searchTerm: params?.search ?? undefined,
+      includeInactive: params?.includeInactive ?? false,
     },
   });
   const data = response.data;

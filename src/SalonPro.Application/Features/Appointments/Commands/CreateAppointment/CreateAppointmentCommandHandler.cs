@@ -39,6 +39,8 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
 
         var client = await _unitOfWork.Clients.GetByIdAsync(request.ClientId, cancellationToken)
             ?? throw new NotFoundException(nameof(Client), request.ClientId);
+        if (!client.IsActive)
+            throw new ValidationException("Izabrani klijent je deaktiviran i ne može se koristiti za zakazivanje.");
 
         var staffMember = await _unitOfWork.StaffMembers.GetByIdAsync(request.StaffMemberId, cancellationToken)
             ?? throw new NotFoundException(nameof(StaffMember), request.StaffMemberId);
@@ -71,6 +73,20 @@ public class CreateAppointmentCommandHandler : IRequestHandler<CreateAppointment
         var totalDuration = services.Sum(s => s.DurationMinutes);
         var totalPrice = services.Sum(s => s.Price);
         var endTime = request.StartTime.AddMinutes(totalDuration);
+
+        var hasConflict = await _unitOfWork.Appointments.Query()
+            .AnyAsync(a =>
+                a.TenantId == tenantId &&
+                a.StaffMemberId == request.StaffMemberId &&
+                a.Status != AppointmentStatus.Cancelled &&
+                request.StartTime < a.EndTime &&
+                endTime > a.StartTime,
+                cancellationToken);
+
+        if (hasConflict)
+        {
+            throw new ValidationException("Izabrani zaposleni već ima termin u tom vremenskom periodu.");
+        }
 
         var appointment = new Appointment
         {

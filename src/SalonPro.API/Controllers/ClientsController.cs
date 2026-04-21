@@ -22,9 +22,10 @@ public class ClientsController : ApiControllerBase
     public async Task<IActionResult> GetClients(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 20,
-        [FromQuery] string? searchTerm = null)
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] bool includeInactive = false)
     {
-        var result = await Mediator.Send(new GetClientsQuery(pageNumber, pageSize, searchTerm));
+        var result = await Mediator.Send(new GetClientsQuery(pageNumber, pageSize, searchTerm, includeInactive));
         return Ok(result);
     }
 

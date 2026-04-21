@@ -126,7 +126,7 @@ public class GetDashboardStatsQueryHandler : IRequestHandler<GetDashboardStatsQu
 
         // Total clients (all time)
         var totalClients = await _unitOfWork.Clients.Query()
-            .CountAsync(cancellationToken);
+            .CountAsync(c => c.IsActive, cancellationToken);
 
         // Completion rate this month: completed / (total not cancelled) * 100
         var monthEnd = thisMonthStart.AddMonths(1);

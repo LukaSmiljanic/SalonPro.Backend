@@ -136,6 +136,7 @@ export interface Client {
   id: string;
   firstName: string;
   lastName: string;
+  isActive?: boolean;
   email?: string;
   phone?: string;
   notes?: string;

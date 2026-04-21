@@ -183,14 +183,14 @@ export const DashboardPage: React.FC = () => {
       )}
 
       {/* Main content grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-6 items-start">
 
         {/* Revenue chart */}
-        <div className="lg:col-span-2 card card-padded">
+        <div className="lg:col-span-2 card card-padded self-start">
           <h2 className="text-sm font-semibold text-text mb-4">Prihod (poslednjih 30 dana)</h2>
           {chartData.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -10 }}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 8 }}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#5B3A8C" stopOpacity={0.15} />
@@ -207,6 +207,7 @@ export const DashboardPage: React.FC = () => {
                   interval="preserveStartEnd"
                 />
                 <YAxis
+                  width={88}
                   tickFormatter={v => `${formatCurrency(v)}`}
                   tick={{ fontSize: 11, fill: 'var(--color-text-faint)' }}
                   axisLine={false}
@@ -242,7 +243,7 @@ export const DashboardPage: React.FC = () => {
         </div>
 
         {/* Upcoming appointments */}
-        <div className="card card-padded">
+        <div className="card card-padded self-start">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-text">Predstojeći</h2>
             <span className="text-xs text-text-faint">
@@ -251,7 +252,7 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {stats?.upcomingAppointments?.length ? (
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[520px] overflow-auto pr-1">
               {stats.upcomingAppointments.map(appt => (
                 <div key={appt.id} className="flex flex-col gap-1 p-3 bg-surface-2 rounded-lg">
                   <div className="flex items-center justify-between">
