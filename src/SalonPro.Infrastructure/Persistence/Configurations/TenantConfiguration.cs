@@ -18,6 +18,9 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
         builder.Property(t => t.City).HasMaxLength(100);
         builder.Property(t => t.Country).HasMaxLength(100);
         builder.Property(t => t.LogoUrl).HasMaxLength(2000);
+        builder.Property(t => t.PrimaryColor).HasMaxLength(20);
+        builder.Property(t => t.AccentColor).HasMaxLength(20);
+        builder.Property(t => t.OnlineBookingEnabled).HasDefaultValue(true);
         builder.Property(t => t.TimeZone).HasMaxLength(100);
         builder.Property(t => t.Currency).HasMaxLength(10);
         builder.Property(t => t.Language).HasMaxLength(10);

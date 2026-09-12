@@ -76,6 +76,14 @@ public class TenantResolutionMiddleware
             return;
         }
 
+        // Meta OAuth — tenant id is in signed state, not JWT/header
+        if (path.StartsWith("/api/social/instagram/callback", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/social/instagram/complete", StringComparison.OrdinalIgnoreCase))
+        {
+            await _next(context);
+            return;
+        }
+
         // SuperAdmin endpoints are cross-tenant and don't require a tenant ID
         if (SuperAdminPrefixes.Any(prefix => path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
         {
@@ -100,6 +108,7 @@ public class TenantResolutionMiddleware
     {
         return path.StartsWith("/swagger", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/health", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/media/social", StringComparison.OrdinalIgnoreCase)
             || path.Equals("/", StringComparison.OrdinalIgnoreCase)
             || path.StartsWith("/favicon", StringComparison.OrdinalIgnoreCase);
     }

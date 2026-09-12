@@ -19,8 +19,8 @@ export const AiInsightsPanel: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#5B3A8C]/10 flex items-center justify-center">
-            <Brain size={16} className="text-[#5B3A8C]" />
+          <div className="w-8 h-8 rounded-lg insight-header-icon flex items-center justify-center border border-border">
+            <Brain size={16} className="text-primary" />
           </div>
           <div>
             <h2 className="text-sm font-semibold text-text">AI Uvidi</h2>
@@ -30,7 +30,7 @@ export const AiInsightsPanel: React.FC = () => {
         <button
           onClick={() => refetch()}
           disabled={isFetching}
-          className="p-1.5 rounded-md text-text-faint hover:text-[#5B3A8C] hover:bg-[#5B3A8C]/10 transition-interactive disabled:opacity-50"
+          className="p-1.5 rounded-md text-text-faint hover:text-primary hover:bg-primary-highlight transition-interactive disabled:opacity-50"
           title="Osveži uvide"
         >
           <RefreshCw size={13} className={isFetching ? 'animate-spin' : ''} />

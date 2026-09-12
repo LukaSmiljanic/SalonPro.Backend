@@ -10,7 +10,14 @@ public static class DatabaseSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext context, IPasswordService passwordService)
     {
-        await context.Database.MigrateAsync();
+        try
+        {
+            await context.Database.MigrateAsync();
+        }
+        catch (Exception)
+        {
+            // Production DB is often maintained via raw SQL bootstrap in Program.cs.
+        }
 
         if (await context.Tenants.AnyAsync())
             return;

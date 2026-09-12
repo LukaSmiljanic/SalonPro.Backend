@@ -53,6 +53,24 @@
   --color-warning:          #a05c1a;
   --color-warning-bg:       #fef3e6;
 
+  --color-in-progress:      #1a5fb4;
+  --color-in-progress-bg:   #e0f0ff;
+  --color-cancelled:        #666666;
+  --color-cancelled-bg:     #f5f5f5;
+
+  /* AI insights */
+  --insight-icon-bg:        rgba(255, 255, 255, 0.65);
+  --insight-stat-bg:        rgba(91, 58, 140, 0.06);
+  --insight-row-hover:      rgba(91, 58, 140, 0.08);
+  --insight-urgent-bg:      #fef2f2;
+  --insight-urgent-border:  #fecaca;
+  --insight-high-bg:        #fff7ed;
+  --insight-high-border:    #fed7aa;
+  --insight-medium-bg:      rgba(91, 58, 140, 0.06);
+  --insight-medium-border:  rgba(91, 58, 140, 0.14);
+  --insight-low-bg:         var(--color-surface-2);
+  --insight-low-border:     var(--color-border);
+
   /* Typography */
   --font-display:  'DM Sans', system-ui, sans-serif;
   --font-body:     'Inter', system-ui, sans-serif;
@@ -101,6 +119,51 @@
   --color-text:             #e8e0f5;
   --color-text-muted:       #9984b8;
   --color-text-faint:       #574a6e;
+  --color-text-inverse:     #0e0c14;
+
+  --color-kosa:             #a89ad4;
+  --color-kosa-bg:          #252038;
+  --color-kosa-border:      #4a3d6e;
+
+  --color-nokti:            #d47a94;
+  --color-nokti-bg:         #2a1a22;
+  --color-nokti-border:     #5c3040;
+
+  --color-spa:              #5cb88a;
+  --color-spa-bg:           #152820;
+  --color-spa-border:       #2d5040;
+
+  --color-lepota:           #d4925c;
+  --color-lepota-bg:        #2a2018;
+  --color-lepota-border:    #5c4030;
+
+  --color-success:          #5cb88a;
+  --color-success-bg:       #152820;
+  --color-error:            #e85a7a;
+  --color-error-bg:         #2a1520;
+  --color-warning:          #e0a050;
+  --color-warning-bg:       #2a2218;
+
+  --color-in-progress:      #6eb3f0;
+  --color-in-progress-bg:   #1a2838;
+  --color-cancelled:        #8a8494;
+  --color-cancelled-bg:     #1e1c24;
+
+  --insight-icon-bg:        rgba(32, 28, 48, 0.95);
+  --insight-stat-bg:        rgba(160, 124, 232, 0.1);
+  --insight-row-hover:      rgba(160, 124, 232, 0.14);
+  --insight-urgent-bg:      rgba(232, 90, 122, 0.1);
+  --insight-urgent-border:  rgba(232, 90, 122, 0.22);
+  --insight-high-bg:        rgba(224, 160, 80, 0.1);
+  --insight-high-border:    rgba(224, 160, 80, 0.22);
+  --insight-medium-bg:      rgba(160, 124, 232, 0.1);
+  --insight-medium-border:  rgba(160, 124, 232, 0.2);
+  --insight-low-bg:         var(--color-surface-offset);
+  --insight-low-border:     var(--color-border);
+
+  --shadow-sm:  0 1px 2px oklch(0.05 0.02 300 / 0.4);
+  --shadow-md:  0 4px 14px oklch(0.05 0.02 300 / 0.5);
+  --shadow-lg:  0 12px 36px oklch(0.05 0.02 300 / 0.55);
 }
 
 /* =============================================
@@ -152,6 +215,22 @@ body {
   max-width: 1280px;
   margin: 0 auto;
   padding: 0 var(--space-lg);
+}
+
+/* Tablet / small laptop: avoid horizontal squeeze + hide scrollbars on nav strip */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container-main {
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+  }
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* =============================================
@@ -232,7 +311,7 @@ input, textarea, select {
 
 .calendar-grid {
   display: grid;
-  grid-template-columns: 60px repeat(7, 1fr);
+  grid-template-columns: 64px repeat(7, 1fr);
   /* Don't clip absolutely positioned appointment blocks that extend past the last hour row */
   overflow-x: auto;
   overflow-y: visible;
@@ -250,7 +329,8 @@ input, textarea, select {
 }
 
 .calendar-slot {
-  height: 60px; /* 1 hour = 60px */
+  /* Must stay in sync with HOUR_HEIGHT in CalendarPage.tsx */
+  height: 88px;
   border-bottom: 1px solid var(--color-divider);
   position: relative;
 }
@@ -272,13 +352,14 @@ input, textarea, select {
 }
 
 .calendar-time-label {
-  height: 60px;
+  /* Must stay in sync with HOUR_HEIGHT in CalendarPage.tsx */
+  height: 88px;
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
   padding-right: 8px;
   padding-top: 2px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--color-text-faint);
   font-variant-numeric: tabular-nums;
 }
@@ -319,6 +400,12 @@ input, textarea, select {
 .appt-block-spa    { background: var(--color-spa-bg);    border-color: var(--color-spa);    color: var(--color-spa);    }
 .appt-block-lepota { background: var(--color-lepota-bg); border-color: var(--color-lepota); color: var(--color-lepota); }
 .appt-block-default { background: var(--color-surface-offset); border-color: var(--color-primary); color: var(--color-primary); }
+.appt-block-pending { background: var(--color-warning-bg); border-color: var(--color-warning); color: var(--color-warning); }
+.appt-block-confirmed { background: var(--color-primary-highlight); border-color: var(--color-primary); color: var(--color-primary); }
+.appt-block-in-progress { background: var(--color-in-progress-bg); border-color: var(--color-in-progress); color: var(--color-in-progress); }
+.appt-block-completed { background: var(--color-success-bg); border-color: var(--color-success); color: var(--color-success); }
+.appt-block-cancelled { background: var(--color-cancelled-bg); border-color: var(--color-cancelled); color: var(--color-cancelled); }
+.appt-block-no-show { background: var(--color-error-bg); border-color: var(--color-error); color: var(--color-error); }
 
 /* =============================================
    STATUS BADGES
@@ -337,10 +424,52 @@ input, textarea, select {
 
 .badge-pending    { background: var(--color-warning-bg); color: var(--color-warning); }
 .badge-confirmed  { background: var(--color-primary-highlight); color: var(--color-primary); }
-.badge-in-progress { background: #e0f0ff; color: #1a5fb4; }
+.badge-in-progress { background: var(--color-in-progress-bg); color: var(--color-in-progress); }
 .badge-completed  { background: var(--color-success-bg); color: var(--color-success); }
-.badge-cancelled  { background: #f5f5f5; color: #666; }
+.badge-cancelled  { background: var(--color-cancelled-bg); color: var(--color-cancelled); }
 .badge-no-show    { background: var(--color-error-bg); color: var(--color-error); }
+
+/* =============================================
+   AI INSIGHTS
+   ============================================= */
+
+.insight-icon-box {
+  background: var(--insight-icon-bg);
+  border: 1px solid var(--color-border);
+}
+
+.insight-stat-tile {
+  background: var(--insight-stat-bg);
+  border: 1px solid var(--color-border);
+}
+
+.insight-header-icon {
+  background: var(--insight-stat-bg);
+}
+
+.insight-priority-urgent {
+  background: var(--insight-urgent-bg);
+  border-color: var(--insight-urgent-border);
+}
+
+.insight-priority-high {
+  background: var(--insight-high-bg);
+  border-color: var(--insight-high-border);
+}
+
+.insight-priority-medium {
+  background: var(--insight-medium-bg);
+  border-color: var(--insight-medium-border);
+}
+
+.insight-priority-low {
+  background: var(--insight-low-bg);
+  border-color: var(--insight-low-border);
+}
+
+.insight-client-row:hover {
+  background: var(--insight-row-hover);
+}
 
 /* =============================================
    MODAL OVERLAY
@@ -400,6 +529,23 @@ input, textarea, select {
     max-height: 85dvh;
     border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   }
+}
+
+/* Public booking page (no auth) */
+.book-input {
+  display: block;
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.book-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--book-primary, #5b3a8c) 35%, transparent);
+  border-color: var(--book-primary, #5b3a8c);
 }
 
 /* =============================================

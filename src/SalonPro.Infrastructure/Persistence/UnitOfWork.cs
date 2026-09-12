@@ -19,6 +19,9 @@ public class UnitOfWork : IUnitOfWork
     public IRepository<WorkingHours> WorkingHours { get; }
     public IRepository<Payment> Payments { get; }
     public IRepository<LoyaltyConfig> LoyaltyConfigs { get; }
+    public IRepository<SocialPost> SocialPosts { get; }
+    public IRepository<TenantInstagramAccount> TenantInstagramAccounts { get; }
+    public IRepository<SocialGalleryImage> SocialGalleryImages { get; }
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -35,6 +38,9 @@ public class UnitOfWork : IUnitOfWork
         WorkingHours = new Repository<WorkingHours>(context);
         Payments = new Repository<Payment>(context);
         LoyaltyConfigs = new Repository<LoyaltyConfig>(context);
+        SocialPosts = new Repository<SocialPost>(context);
+        TenantInstagramAccounts = new Repository<TenantInstagramAccount>(context);
+        SocialGalleryImages = new Repository<SocialGalleryImage>(context);
     }
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

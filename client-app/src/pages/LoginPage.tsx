@@ -4,6 +4,7 @@ import { Scissors, Eye, EyeOff, AlertCircle, MailCheck, CheckCircle2, KeyRound }
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { ThemeToggle } from '../components/ThemeToggle';
 import apiClient from '../api/client';
 
 type Mode = 'login' | 'register';
@@ -77,7 +78,8 @@ export const LoginPage: React.FC = () => {
         ...(loginForm.tenantId.trim() && { tenantId: loginForm.tenantId.trim() }),
       });
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      const data = (err as { response?: { data?: { message?: string; detail?: string; title?: string } } })?.response?.data;
+      const msg = data?.detail ?? data?.message ?? data?.title;
       setError(msg ?? 'Prijava nije uspela. Proverite podatke.');
     } finally {
       setIsLoading(false);
@@ -147,7 +149,10 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-dvh bg-bg flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-bg flex items-center justify-center p-4 relative">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm">
 
         {/* Logo */}

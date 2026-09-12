@@ -40,6 +40,7 @@ export const queryKeys = {
     all: ['settings'] as const,
     workingHours: () => [...queryKeys.settings.all, 'working-hours'] as const,
     loyalty: () => [...queryKeys.settings.all, 'loyalty'] as const,
+    branding: () => [...queryKeys.settings.all, 'branding'] as const,
   },
   reports: {
     all: ['reports'] as const,
@@ -56,5 +57,10 @@ export const queryKeys = {
     list: (params?: { year?: number; month?: number; status?: string }) =>
       [...queryKeys.payments.all, 'list', params] as const,
     summary: () => [...queryKeys.payments.all, 'summary'] as const,
+  },
+  social: {
+    all: ['social'] as const,
+    week: (from: string, to: string) => [...queryKeys.social.all, 'week', from, to] as const,
+    gallery: () => [...queryKeys.social.all, 'gallery'] as const,
   },
 } as const;

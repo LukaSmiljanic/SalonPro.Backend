@@ -96,7 +96,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
         {
             AccessToken = accessToken,
             RefreshToken = refreshToken,
-            ExpiresAt = _dateTimeService.UtcNow.AddMinutes(60),
+            ExpiresAt = _dateTimeService.UtcNow.AddHours(10),
             User = new AuthUserDto
             {
                 Id = user.Id.ToString(),
@@ -113,6 +113,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, AuthResponseDto
             {
                 CanUseOnlineBooking = TenantPlanRules.CanUseOnlineBooking(tenant?.Plan),
                 MaxStaffMembers = TenantPlanRules.MaxStaffMembers(tenant?.Plan),
+                CanUseSocialMarketing = TenantPlanRules.CanUseSocialMarketing(tenant?.Plan),
             }
         };
     }

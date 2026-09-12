@@ -8,7 +8,10 @@ public record PublicBookingSalonDto(
     string? City,
     string? Phone,
     string? Address,
-    string Currency
+    string Currency,
+    string? PrimaryColor,
+    string? AccentColor,
+    bool OnlineBookingEnabled
 );
 
 public record PublicBookingContext(

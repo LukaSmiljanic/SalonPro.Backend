@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, setHours, setMinutes } from 'date-fns';
 import { toast } from 'sonner';
-import { getClients } from '../api/clients';
+import { createClient, getClients } from '../api/clients';
 import { getStaff } from '../api/staff';
 import { getServices } from '../api/services';
 import { createAppointment, getAppointmentDetail, getAppointments, updateAppointment } from '../api/appointments';
@@ -13,6 +13,7 @@ import { toLocalISOString } from '../lib/dateUtils';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { Input } from './Input';
+import { DateInput } from './DateInput';
 import { LoadingSpinner } from './LoadingSpinner';
 
 /** Build 24h time options in 15-min steps between startHour and endHour */
@@ -26,7 +27,17 @@ function buildTimeSlots(startHour: number, endHour: number): string[] {
   return slots;
 }
 
-const DEFAULT_TIME_SLOTS = buildTimeSlots(7, 22);
+const CALENDAR_DAY_START = 6;
+const CALENDAR_DAY_END = 22;
+const DEFAULT_TIME_SLOTS = buildTimeSlots(CALENDAR_DAY_START, CALENDAR_DAY_END);
+
+/** Name + phone so duplicate first names stay distinguishable in dropdowns. */
+function formatClientSelectLabel(c: Pick<Client, 'firstName' | 'lastName' | 'phone' | 'email'>): string {
+  const name = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
+  const phone = (c.phone ?? '').trim();
+  const suffix = phone ? ` · ${phone}` : c.email ? ` · ${c.email}` : '';
+  return `${name}${suffix}`;
+}
 
 interface CreateAppointmentModalProps {
   isOpen: boolean;
@@ -50,7 +61,12 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
   const [error, setError] = useState<string | null>(null);
 
   const [clientId, setClientId] = useState('');
+  const [isNewClientMode, setIsNewClientMode] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [newClientPhone, setNewClientPhone] = useState('');
+  const [quickCreatedClientId, setQuickCreatedClientId] = useState<string | null>(null);
   const [staffId, setStaffId] = useState('');
+  const [serviceCategory, setServiceCategory] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('09:00');
@@ -104,8 +120,8 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
       return m > 0 ? h + 1 : h;
     }));
     return buildTimeSlots(
-      isNaN(minH) ? 7 : Math.max(0, minH),
-      isNaN(maxH) ? 22 : Math.min(24, maxH)
+      isNaN(minH) ? CALENDAR_DAY_START : Math.min(CALENDAR_DAY_START, minH),
+      isNaN(maxH) ? CALENDAR_DAY_END : Math.max(CALENDAR_DAY_END, maxH)
     );
   }, [workingHoursData]);
 
@@ -113,6 +129,27 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     () => services.find(s => s.id === serviceId)?.duration ?? 0,
     [services, serviceId]
   );
+
+  const servicesByCategory = useMemo(() => {
+    const grouped = new Map<string, Service[]>();
+    for (const service of services) {
+      const category = service.category?.trim() || 'Ostalo';
+      if (!grouped.has(category)) grouped.set(category, []);
+      grouped.get(category)!.push(service);
+    }
+
+    return Array.from(grouped.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'sr-Latn-RS'))
+      .map(([category, items]) => ({
+        category,
+        items: items.sort((a, b) => a.name.localeCompare(b.name, 'sr-Latn-RS')),
+      }));
+  }, [services]);
+
+  const selectedCategoryServices = useMemo(() => {
+    if (!serviceCategory) return services;
+    return services.filter(s => (s.category?.trim() || 'Ostalo') === serviceCategory);
+  }, [services, serviceCategory]);
 
   const availableTimeSlots = useMemo(() => {
     if (!date || !staffId) return timeSlots;
@@ -198,11 +235,35 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     setClientId(appointmentDetail.clientId);
     setStaffId(appointmentDetail.staffMemberId);
     setServiceId(appointmentDetail.services?.[0]?.serviceId ?? '');
+    const selected = services.find(s => s.id === (appointmentDetail.services?.[0]?.serviceId ?? ''));
+    setServiceCategory(selected?.category?.trim() || '');
     setDate(format(start, 'yyyy-MM-dd'));
     setTime(format(start, 'HH:mm'));
     setNotes(appointmentDetail.notes ?? '');
     setError(null);
-  }, [isOpen, isEditMode, appointmentDetail]);
+  }, [isOpen, isEditMode, appointmentDetail, services]);
+
+  useEffect(() => {
+    if (!isOpen || isEditMode) return;
+    if (serviceCategory) return;
+    if (servicesByCategory.length > 0) {
+      setServiceCategory(servicesByCategory[0].category);
+    }
+  }, [isOpen, isEditMode, serviceCategory, servicesByCategory]);
+
+  useEffect(() => {
+    if (!selectedCategoryServices.some(s => s.id === serviceId)) {
+      setServiceId('');
+    }
+  }, [selectedCategoryServices, serviceId]);
+
+  useEffect(() => {
+    if (!isOpen || isEditMode) return;
+    if (staffId) return;
+    if (staff.length === 1) {
+      setStaffId(staff[0].id);
+    }
+  }, [isOpen, isEditMode, staff, staffId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -215,7 +276,12 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
   const resetForm = () => {
     setClientId('');
+    setIsNewClientMode(false);
+    setNewClientName('');
+    setNewClientPhone('');
+    setQuickCreatedClientId(null);
     setStaffId('');
+    setServiceCategory('');
     setServiceId('');
     const today = new Date();
     setDate(format(today, 'yyyy-MM-dd'));
@@ -231,7 +297,45 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientId || !staffId || !serviceId || !date || !time) {
+    if (!staffId || !serviceId || !date || !time) {
+      setError('Popunite osoblje, uslugu, datum i vreme.');
+      return;
+    }
+
+    let resolvedClientId = clientId;
+    if (isNewClientMode) {
+      const fullName = newClientName.trim();
+      const phone = newClientPhone.trim();
+      if (!fullName || !phone) {
+        setError('Za novog klijenta unesite ime i broj telefona.');
+        return;
+      }
+
+      if (quickCreatedClientId) {
+        resolvedClientId = quickCreatedClientId;
+      } else {
+        const parts = fullName.split(/\s+/);
+        const firstName = parts[0] ?? '';
+        const phoneDigits = phone.replace(/\D/g, '');
+        const lastName =
+          parts.length > 1
+            ? parts.slice(1).join(' ')
+            : phoneDigits.length >= 4
+              ? phoneDigits.slice(-4)
+              : 'Klijent';
+        try {
+          const created = await createClient({ firstName, lastName, phone });
+          resolvedClientId = created.id;
+          setQuickCreatedClientId(created.id);
+          queryClient.invalidateQueries({ queryKey: queryKeys.clients.all });
+        } catch {
+          setError('Nije moguće automatski kreirati klijenta.');
+          return;
+        }
+      }
+    }
+
+    if (!resolvedClientId) {
       setError('Popunite klijenta, osoblje, uslugu, datum i vreme.');
       return;
     }
@@ -243,7 +347,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     if (isEditMode && appointmentId) {
       updateMutation.mutate({
         id: appointmentId,
-        clientId,
+        clientId: resolvedClientId,
         staffId,
         serviceId,
         startTime: startTimeIso,
@@ -253,7 +357,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
     }
 
     createMutation.mutate({
-      clientId,
+      clientId: resolvedClientId,
       staffId,
       serviceId,
       startTime: startTimeIso,
@@ -294,20 +398,65 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
 
           <div>
             <label className="block text-sm font-medium text-text mb-1">Klijent *</label>
-            <select
-              value={clientId}
-              onChange={e => setClientId(e.target.value)}
-              className="w-full h-9 bg-surface border border-border rounded-md px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
-              required
-            >
-              <option value="">Izaberite klijenta</option>
-              {clients.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.firstName} {c.lastName}
-                  {c.email ? ` (${c.email})` : ''}
-                </option>
-              ))}
-            </select>
+            {!isEditMode && (
+              <div className="mb-2 flex items-center justify-end">
+                <button
+                  type="button"
+                  className="text-xs text-primary hover:text-primary/80"
+                  onClick={() => {
+                    setIsNewClientMode(v => !v);
+                    setQuickCreatedClientId(null);
+                    setError(null);
+                  }}
+                >
+                  {isNewClientMode ? 'Izaberi postojećeg klijenta' : 'Brz unos novog klijenta'}
+                </button>
+              </div>
+            )}
+
+            {isNewClientMode && !isEditMode ? (
+              <div className="space-y-2">
+                <Input
+                  label="Ime i prezime *"
+                  value={newClientName}
+                  onChange={e => {
+                    setNewClientName(e.target.value);
+                    setQuickCreatedClientId(null);
+                  }}
+                  placeholder="Npr. Ana Jovanovic ili samo Ana"
+                  required={isNewClientMode}
+                />
+                <p className="text-[11px] text-text-muted -mt-1">
+                  Ako unesete samo ime, za razlikovanje koristiće se poslednje četiri cifre telefona kao „prezime“ u listi.
+                  Telefon uvek prikazujemo uz ime u padajućoj listi.
+                </p>
+                <Input
+                  label="Broj telefona *"
+                  type="tel"
+                  value={newClientPhone}
+                  onChange={e => {
+                    setNewClientPhone(e.target.value);
+                    setQuickCreatedClientId(null);
+                  }}
+                  placeholder="+381 6x xxx xxxx"
+                  required={isNewClientMode}
+                />
+              </div>
+            ) : (
+              <select
+                value={clientId}
+                onChange={e => setClientId(e.target.value)}
+                className="w-full h-9 bg-surface border border-border rounded-md px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30"
+                required
+              >
+                <option value="">Izaberite klijenta</option>
+                {clients.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {formatClientSelectLabel(c)}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -326,6 +475,21 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-text mb-1">Kategorija usluge *</label>
+            <select
+              value={serviceCategory}
+              onChange={e => setServiceCategory(e.target.value)}
+              className="w-full h-9 bg-surface border border-border rounded-md px-3 text-sm text-text focus:outline-none focus:ring-2 focus:ring-primary/30 mb-2"
+              required
+            >
+              <option value="">Izaberite kategoriju</option>
+              {servicesByCategory.map(group => (
+                <option key={group.category} value={group.category}>
+                  {group.category}
+                </option>
+              ))}
+            </select>
+
             <label className="block text-sm font-medium text-text mb-1">Usluga *</label>
             <select
               value={serviceId}
@@ -334,7 +498,7 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
               required
             >
               <option value="">Izaberite uslugu</option>
-              {services.map(s => (
+              {selectedCategoryServices.map(s => (
                 <option key={s.id} value={s.id}>
                   {s.name} – {s.duration} min, {new Intl.NumberFormat('sr-Latn-RS', { style: 'currency', currency: 'RSD', minimumFractionDigits: 0 }).format(s.price)}
                 </option>
@@ -343,11 +507,10 @@ export const CreateAppointmentModal: React.FC<CreateAppointmentModalProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input
+            <DateInput
               label="Datum *"
-              type="date"
               value={date}
-              onChange={e => setDate(e.target.value)}
+              onChange={setDate}
               required
             />
             <div>

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Save, Plus, Trash2, Award } from 'lucide-react';
+import { Save, Plus, Trash2, Award, Palette } from 'lucide-react';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { OnlineBookingBrandingSection } from '../components/OnlineBookingBrandingSection';
 import {
   getLoyaltyConfig,
   updateLoyaltyConfig,
@@ -202,14 +204,35 @@ const LoyaltySection: React.FC = () => {
 
 // ── Page ────────────────────────────────────────────────────────────────────────────────────
 
+const AppearanceSection: React.FC = () => (
+  <div className="card card-padded space-y-3">
+    <div className="flex items-center gap-2">
+      <Palette size={18} className="text-primary" />
+      <h2 className="text-base font-semibold text-text">Izgled</h2>
+    </div>
+    <p className="text-sm text-text-muted">
+      Tamna ili svetla tema. Izbor se pamti za vaš nalog na ovom uređaju.
+    </p>
+    <ThemeToggle variant="labeled" />
+  </div>
+);
+
 export const SettingsPage: React.FC = () => {
   return (
     <div className="container-main py-6 space-y-6">
-      {/* Header */}
+      <div>
+        <h1 className="text-xl font-semibold text-display text-text">Podešavanja</h1>
+        <p className="text-xs text-text-faint mt-0.5">Brending, online rezervacije, izgled i loyalty program</p>
+      </div>
+
+      <OnlineBookingBrandingSection />
+
+      <AppearanceSection />
+
       <div className="flex items-center gap-3">
         <Award size={20} className="text-primary" />
         <div>
-          <h1 className="text-xl font-semibold text-display text-text">Loyalty program</h1>
+          <h2 className="text-base font-semibold text-display text-text">Loyalty program</h2>
           <p className="text-xs text-text-faint mt-0.5">
             Konfigurišite nivoe lojalnosti i pogodnosti za klijente
           </p>

@@ -9,6 +9,17 @@ public interface IEmailService
     Task SendSubscriptionWarningAsync(string toEmail, string tenantName, int daysRemaining, DateTime expirationDate, CancellationToken cancellationToken = default);
     Task SendSubscriptionExpiredAsync(string toEmail, string tenantName, CancellationToken cancellationToken = default);
     Task SendPasswordResetAsync(string toEmail, string resetUrl, CancellationToken cancellationToken = default);
+
+    /// <summary>SuperAdmin-provisioned time-limited demo: login URL, email, and temporary password.</summary>
+    Task SendDemoAccessEmailAsync(
+        string toEmail,
+        string tenantName,
+        string loginUrl,
+        string loginEmail,
+        string temporaryPassword,
+        DateTime subscriptionEndsUtc,
+        int trialDays,
+        CancellationToken cancellationToken = default);
 }
 
 public record AppointmentEmailDto(

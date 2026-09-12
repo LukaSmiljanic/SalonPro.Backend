@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using SalonPro.Application.Common.Exceptions;
 
 namespace SalonPro.API.Middleware;
@@ -19,7 +20,7 @@ public class ExceptionHandlingMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, IConfiguration configuration)
     {
         try
         {
@@ -27,12 +28,21 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(context, ex, configuration);
         }
     }
 
-    private async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private async Task HandleExceptionAsync(HttpContext context, Exception exception, IConfiguration configuration)
     {
+        var path = context.Request.Path.Value ?? string.Empty;
+        if (path.Contains("/api/social/instagram/callback", StringComparison.OrdinalIgnoreCase)
+            && !context.Response.HasStarted)
+        {
+            var frontend = configuration["AppSettings:FrontendUrl"]?.TrimEnd('/') ?? "/";
+            var reason = exception is InvalidOperationException ioe ? ioe.Message : "Neočekivana greška na serveru.";
+            context.Response.Redirect($"{frontend}/marketing?instagram=error&reason={Uri.EscapeDataString(reason)}");
+            return;
+        }
         var (statusCode, title, detail, errors) = exception switch
         {
             Application.Common.Exceptions.ValidationException validationEx =>
@@ -59,6 +69,30 @@ public class ExceptionHandlingMiddleware
                  forbiddenEx.Message,
                  (IDictionary<string, string[]>?)null),
 
+            InvalidOperationException invalidOpEx =>
+                (HttpStatusCode.BadRequest,
+                 "Zahtev nije mogao biti obraden.",
+                 invalidOpEx.Message,
+                 (IDictionary<string, string[]>?)null),
+
+            HttpRequestException httpEx =>
+                (HttpStatusCode.BadGateway,
+                 "Spoljni servis nije dostupan.",
+                 httpEx.Message,
+                 (IDictionary<string, string[]>?)null),
+
+            _ when exception is DbUpdateException dbEx =>
+                (HttpStatusCode.ServiceUnavailable,
+                 "Greška baze podataka.",
+                 DescribeDatabaseError(dbEx),
+                 (IDictionary<string, string[]>?)null),
+
+            Microsoft.Data.SqlClient.SqlException sqlEx =>
+                (HttpStatusCode.ServiceUnavailable,
+                 "Greška baze podataka.",
+                 DescribeDatabaseError(sqlEx),
+                 (IDictionary<string, string[]>?)null),
+
             _ => LogAndReturnInternalServerError(exception)
         };
 
@@ -73,6 +107,23 @@ public class ExceptionHandlingMiddleware
         });
 
         await context.Response.WriteAsync(json);
+    }
+
+    private static string DescribeDatabaseError(Exception exception)
+    {
+        var root = exception;
+        while (root.InnerException != null)
+            root = root.InnerException;
+
+        var sql = root.Message;
+        if (sql.Contains("SocialPosts", StringComparison.OrdinalIgnoreCase)
+            || sql.Contains("TenantInstagramAccounts", StringComparison.OrdinalIgnoreCase)
+            || sql.Contains("Invalid object name", StringComparison.OrdinalIgnoreCase))
+        {
+            return $"Nedostaju tabele za marketing modul. U Monster SQL panelu pokrenite skriptu scripts/social-marketing-schema.sql. Detalj: {sql}";
+        }
+
+        return $"Šema baze nije usklađena. Detalj: {sql}";
     }
 
     private (HttpStatusCode, string, string, IDictionary<string, string[]>?) LogAndReturnInternalServerError(Exception exception)

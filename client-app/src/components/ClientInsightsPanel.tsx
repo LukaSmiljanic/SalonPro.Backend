@@ -46,7 +46,7 @@ export const ClientInsightsPanel: React.FC<ClientInsightsPanelProps> = ({ client
   return (
     <div className="mt-4 pt-3 border-t border-border">
       <div className="flex items-center gap-1.5 mb-3">
-        <Brain size={13} className="text-[#5B3A8C]" />
+        <Brain size={13} className="text-primary" />
         <span className="text-xs font-semibold text-text">AI Uvidi</span>
       </div>
 
@@ -54,25 +54,25 @@ export const ClientInsightsPanel: React.FC<ClientInsightsPanelProps> = ({ client
       {hasStats && (
         <div className="grid grid-cols-2 gap-2 mb-3">
           {data.averageVisitCycleDays >= 3 && (
-            <div className="bg-[#5B3A8C]/5 rounded-md p-2 text-center">
+            <div className="insight-stat-tile rounded-md p-2 text-center">
               <p className="text-xs font-semibold text-text">~{Math.round(data.averageVisitCycleDays)} dana</p>
               <p className="text-[10px] text-text-faint">Ciklus poseta</p>
             </div>
           )}
           {data.averageSpendPerVisit > 0 && (
-            <div className="bg-[#5B3A8C]/5 rounded-md p-2 text-center">
+            <div className="insight-stat-tile rounded-md p-2 text-center">
               <p className="text-xs font-semibold text-text">{formatCurrency(data.averageSpendPerVisit)}</p>
               <p className="text-[10px] text-text-faint">Prosek/poseta</p>
             </div>
           )}
           {data.topService && (
-            <div className="bg-[#5B3A8C]/5 rounded-md p-2 text-center">
+            <div className="insight-stat-tile rounded-md p-2 text-center">
               <p className="text-xs font-semibold text-text truncate">{data.topService}</p>
               <p className="text-[10px] text-text-faint">Top usluga</p>
             </div>
           )}
           {data.suggestedNextVisit && (
-            <div className="bg-[#5B3A8C]/5 rounded-md p-2 text-center">
+            <div className="insight-stat-tile rounded-md p-2 text-center">
               <p className="text-xs font-semibold text-text">
                 {format(parseISO(data.suggestedNextVisit), 'dd.MM.')}
               </p>

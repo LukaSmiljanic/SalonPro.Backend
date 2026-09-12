@@ -13,6 +13,9 @@ public class Tenant : BaseAuditableEntity
     public string? City { get; set; }
     public string? Country { get; set; }
     public string? LogoUrl { get; set; }
+    public string? PrimaryColor { get; set; }
+    public string? AccentColor { get; set; }
+    public bool OnlineBookingEnabled { get; set; } = true;
     public bool IsActive { get; set; } = true;
     public string? TimeZone { get; set; }
     public string? Currency { get; set; } = "RSD";

@@ -9,6 +9,10 @@ namespace SalonPro.API.BackgroundServices;
 /// <summary>
 /// Periodically marks past appointments as Completed for all tenants.
 /// Interval is configurable via Appointments:AutoCompleteIntervalMinutes (15, 30, or 60).
+/// Runs at +1 minute after slot boundaries:
+/// - 15 => :01, :16, :31, :46
+/// - 30 => :01, :31
+/// - 60 => :01
 /// </summary>
 public class CompletePastAppointmentsJob : BackgroundService
 {
@@ -33,12 +37,15 @@ public class CompletePastAppointmentsJob : BackgroundService
             "CompletePastAppointmentsJob started. Interval: {Interval} minutes.",
             intervalMinutes);
 
-        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(intervalMinutes));
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(1));
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
             try
             {
+                if (!ShouldRunNow(DateTime.UtcNow, intervalMinutes))
+                    continue;
+
                 await RunForAllTenantsAsync(stoppingToken);
             }
             catch (OperationCanceledException)
@@ -66,6 +73,20 @@ public class CompletePastAppointmentsJob : BackgroundService
             30 => 30,
             60 => 60,
             _ => 15
+        };
+    }
+
+    private static bool ShouldRunNow(DateTime utcNow, int intervalMinutes)
+    {
+        // Run one minute after each slot boundary so appointments ending at the slot
+        // are safely considered ended.
+        var minute = utcNow.Minute;
+
+        return intervalMinutes switch
+        {
+            60 => minute == 1,
+            30 => minute is 1 or 31,
+            _ => minute % 15 == 1
         };
     }
 

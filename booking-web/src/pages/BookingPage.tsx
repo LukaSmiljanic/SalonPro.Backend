@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import type { CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { CSSProperties, FormEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchJson, postJson } from '../api';
+import { resolveMediaUrl } from '../mediaUrl';
 
 type Salon = {
   slug: string;
@@ -11,6 +12,9 @@ type Salon = {
   phone?: string | null;
   address?: string | null;
   currency: string;
+  primaryColor?: string | null;
+  accentColor?: string | null;
+  onlineBookingEnabled: boolean;
 };
 
 type Service = {
@@ -41,6 +45,11 @@ export function BookingPage() {
   const [startTime, setStartTime] = useState('');
   const [notes, setNotes] = useState('');
 
+  const themeStyle = useMemo<CSSProperties>(() => ({
+    ['--brand-primary' as string]: salon?.primaryColor ?? '#5b3a8c',
+    ['--brand-accent' as string]: salon?.accentColor ?? '#8b5cf6',
+  }), [salon?.primaryColor, salon?.accentColor]);
+
   useEffect(() => {
     if (!slug) return;
     let cancelled = false;
@@ -48,13 +57,20 @@ export function BookingPage() {
       setLoading(true);
       setError(null);
       try {
-        const [s, sv, st] = await Promise.all([
-          fetchJson<Salon>(`/api/public/booking/${encodeURIComponent(slug)}`),
+        const s = await fetchJson<Salon>(`/api/public/booking/${encodeURIComponent(slug)}`);
+        if (cancelled) return;
+        setSalon(s);
+
+        if (!s.onlineBookingEnabled) {
+          setError('Online zakazivanje trenutno nije dostupno za ovaj salon.');
+          return;
+        }
+
+        const [sv, st] = await Promise.all([
           fetchJson<Service[]>(`/api/public/booking/${encodeURIComponent(slug)}/services`),
           fetchJson<Staff[]>(`/api/public/booking/${encodeURIComponent(slug)}/staff`),
         ]);
         if (cancelled) return;
-        setSalon(s);
         setServices(Array.isArray(sv) ? sv : []);
         setStaff(Array.isArray(st) ? st : []);
         if (st.length === 1) setStaffId(st[0].id);
@@ -70,7 +86,7 @@ export function BookingPage() {
     };
   }, [slug]);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (!slug || !staffId || !serviceId || !startTime) return;
     setSubmitting(true);
@@ -98,155 +114,143 @@ export function BookingPage() {
 
   if (loading) {
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        Učitavanje…
+      <div className="page" style={themeStyle}>
+        <p className="muted center">Učitavanje…</p>
       </div>
     );
   }
 
   if (error && !salon) {
     return (
-      <div style={{ maxWidth: 480, margin: '2rem auto', padding: '0 1rem' }}>
-        <p style={{ color: '#b00020' }}>{error}</p>
-        <p style={{ color: '#666', fontSize: '0.9rem' }}>
-          Proverite link ili kontaktirajte salon.
-        </p>
-      </div>
-    );
-  }
-
-  if (doneId && salon) {
-    return (
-      <div style={{ maxWidth: 480, margin: '2rem auto', padding: '0 1rem' }}>
-        <h1 style={{ fontSize: '1.25rem' }}>{salon.name}</h1>
-        <p>Hvala — termin je prijavljen. Možete očekivati potvrdu od salona.</p>
+      <div className="page" style={themeStyle}>
+        <div className="card">
+          <p className="error">{error}</p>
+          <p className="muted small">Proverite link ili kontaktirajte salon.</p>
+        </div>
       </div>
     );
   }
 
   if (!salon) return null;
 
+  const logoSrc = resolveMediaUrl(salon.logoUrl);
+
+  if (doneId) {
+    return (
+      <div className="page" style={themeStyle}>
+        <div className="card success-card">
+          <SalonHeader salon={salon} logoSrc={logoSrc} />
+          <p className="success-text">Hvala — zahtev za termin je poslat. Očekujte potvrdu od salona.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!salon.onlineBookingEnabled) {
+    return (
+      <div className="page" style={themeStyle}>
+        <div className="card">
+          <SalonHeader salon={salon} logoSrc={logoSrc} />
+          <p className="muted">Online zakazivanje trenutno nije aktivno.</p>
+          {salon.phone && (
+            <p className="small">
+              Pozovite nas: <a href={`tel:${salon.phone}`}>{salon.phone}</a>
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ maxWidth: 480, margin: '2rem auto', padding: '0 1rem' }}>
-      <header style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.35rem', margin: '0 0 0.25rem' }}>{salon.name}</h1>
-        {salon.address && <p style={{ margin: 0, color: '#555', fontSize: '0.9rem' }}>{salon.address}</p>}
-        {salon.city && <p style={{ margin: 0, color: '#555', fontSize: '0.9rem' }}>{salon.city}</p>}
-        {salon.phone && (
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem' }}>
-            Tel: <a href={`tel:${salon.phone}`}>{salon.phone}</a>
-          </p>
-        )}
-      </header>
+    <div className="page" style={themeStyle}>
+      <div className="card">
+        <SalonHeader salon={salon} logoSrc={logoSrc} />
 
-      <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        <label>
-          Ime
-          <input
-            required
-            value={firstName}
-            onChange={e => setFirstName(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
-        <label>
-          Prezime
-          <input
-            required
-            value={lastName}
-            onChange={e => setLastName(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
-        <label>
-          Telefon
-          <input
-            required
-            type="tel"
-            value={phone}
-            onChange={e => setPhone(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
-        <label>
-          Email (opciono)
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
+        <form onSubmit={onSubmit} className="form">
+          <label>
+            Ime
+            <input required value={firstName} onChange={e => setFirstName(e.target.value)} />
+          </label>
+          <label>
+            Prezime
+            <input required value={lastName} onChange={e => setLastName(e.target.value)} />
+          </label>
+          <label>
+            Telefon
+            <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)} />
+          </label>
+          <label>
+            Email (opciono)
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          </label>
 
-        <label>
-          Zaposleni
-          <select required value={staffId} onChange={e => setStaffId(e.target.value)} style={inputStyle}>
-            <option value="">— izaberite —</option>
-            {staff.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.fullName}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label>
+            Zaposleni
+            <select required value={staffId} onChange={e => setStaffId(e.target.value)}>
+              <option value="">— izaberite —</option>
+              {staff.map(s => (
+                <option key={s.id} value={s.id}>{s.fullName}</option>
+              ))}
+            </select>
+          </label>
 
-        <label>
-          Usluga
-          <select required value={serviceId} onChange={e => setServiceId(e.target.value)} style={inputStyle}>
-            <option value="">— izaberite —</option>
-            {services.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.name} ({s.durationMinutes} min, {s.price} {salon.currency})
-              </option>
-            ))}
-          </select>
-        </label>
+          <label>
+            Usluga
+            <select required value={serviceId} onChange={e => setServiceId(e.target.value)}>
+              <option value="">— izaberite —</option>
+              {services.map(s => (
+                <option key={s.id} value={s.id}>
+                  {s.name} ({s.durationMinutes} min, {s.price} {salon.currency})
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label>
-          Datum i vreme početka
-          <input
-            required
-            type="datetime-local"
-            value={startTime}
-            onChange={e => setStartTime(e.target.value)}
-            style={inputStyle}
-          />
-        </label>
+          <label>
+            Datum i vreme početka
+            <input
+              required
+              type="datetime-local"
+              value={startTime}
+              onChange={e => setStartTime(e.target.value)}
+            />
+          </label>
 
-        <label>
-          Napomena (opciono)
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} style={inputStyle} />
-        </label>
+          <label>
+            Napomena (opciono)
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} />
+          </label>
 
-        {error && <p style={{ color: '#b00020', margin: 0, fontSize: '0.9rem' }}>{error}</p>}
+          {error && <p className="error small">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          style={{
-            marginTop: '0.5rem',
-            padding: '0.65rem 1rem',
-            fontWeight: 600,
-            background: '#5b3a8c',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            cursor: submitting ? 'wait' : 'pointer',
-          }}
-        >
-          {submitting ? 'Šaljem…' : 'Pošalji zahtev'}
-        </button>
-      </form>
+          <button type="submit" disabled={submitting} className="submit-btn">
+            {submitting ? 'Šaljem…' : 'Pošalji zahtev'}
+          </button>
+        </form>
+      </div>
+
+      <p className="footer-note">Powered by SalonPro</p>
     </div>
   );
 }
 
-const inputStyle: CSSProperties = {
-  display: 'block',
-  width: '100%',
-  marginTop: 4,
-  padding: '0.5rem 0.6rem',
-  borderRadius: 6,
-  border: '1px solid #ccc',
-  font: 'inherit',
-};
+function SalonHeader({ salon, logoSrc }: { salon: Salon; logoSrc: string | null }) {
+  return (
+    <header className="salon-header">
+      {logoSrc && (
+        <img src={logoSrc} alt="" className="salon-logo" />
+      )}
+      <div>
+        <h1>{salon.name}</h1>
+        {salon.address && <p className="muted small">{salon.address}</p>}
+        {salon.city && <p className="muted small">{salon.city}</p>}
+        {salon.phone && (
+          <p className="small">
+            Tel: <a href={`tel:${salon.phone}`}>{salon.phone}</a>
+          </p>
+        )}
+      </div>
+    </header>
+  );
+}

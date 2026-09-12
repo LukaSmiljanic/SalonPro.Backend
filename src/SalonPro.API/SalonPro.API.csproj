@@ -16,4 +16,13 @@
     <ProjectReference Include="..\SalonPro.Application\SalonPro.Application.csproj" />
     <ProjectReference Include="..\SalonPro.Infrastructure\SalonPro.Infrastructure.csproj" />
   </ItemGroup>
+  <!-- Ne prepisuj appsettings.json na MonsterASP pri svakom publish-u (ključevi ostaju na serveru). -->
+  <ItemGroup>
+    <Content Update="appsettings.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+    <Content Update="appsettings.Development.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
 </Project>

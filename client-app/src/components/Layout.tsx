@@ -6,7 +6,7 @@ export const Layout: React.FC = () => {
   return (
     <div className="min-h-dvh bg-bg flex flex-col">
       <TopNav />
-      <main className="flex-1">
+      <main className="flex-1 min-h-0 flex flex-col">
         <Outlet />
       </main>
     </div>

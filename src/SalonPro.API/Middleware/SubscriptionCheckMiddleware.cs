@@ -23,7 +23,8 @@ public class SubscriptionCheckMiddleware
         "/api/tenants",
         "/swagger",
         "/health",
-        "/favicon"
+        "/favicon",
+        "/media/social"
     ];
 
     public SubscriptionCheckMiddleware(RequestDelegate next, ILogger<SubscriptionCheckMiddleware> logger)

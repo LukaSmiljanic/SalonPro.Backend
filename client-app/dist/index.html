@@ -1,6 +1,27 @@
 <!doctype html>
 <html lang="sr">
   <head>
+    <script>
+      (function () {
+        try {
+          var prefs = JSON.parse(localStorage.getItem('salonpro-theme-prefs') || '{}');
+          var token = localStorage.getItem('salonpro_token');
+          var userId = null;
+          if (token) {
+            var p = token.split('.')[1];
+            if (p) {
+              var b = p.replace(/-/g, '+').replace(/_/g, '/');
+              var pl = JSON.parse(atob(b));
+              userId = pl.sub || pl['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+            }
+          }
+          var key = userId ? userId : 'guest';
+          var theme = prefs[key];
+          if (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+          if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,8 +29,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/assets/index-CETScA9R.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-m6-xTiIx.css">
+    <script type="module" crossorigin src="/assets/index-YZNkSKX3.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CoW7t24t.css">
   </head>
   <body>
     <div id="root"></div>

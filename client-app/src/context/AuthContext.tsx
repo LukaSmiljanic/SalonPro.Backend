@@ -29,6 +29,7 @@ const AUTH_META_KEY = 'salonpro_auth_meta';
 const defaultFeatures: TenantFeatures = {
   canUseOnlineBooking: false,
   maxStaffMembers: 1,
+  canUseSocialMarketing: false,
 };
 
 type StoredAuthMeta = {

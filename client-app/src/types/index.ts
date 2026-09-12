@@ -38,6 +38,7 @@ export type TenantPlan = 'Basic' | 'Standard' | 'Pro';
 export interface TenantFeatures {
   canUseOnlineBooking: boolean;
   maxStaffMembers: number;
+  canUseSocialMarketing?: boolean;
 }
 
 export interface RefreshTokenRequest {
@@ -413,4 +414,123 @@ export interface ReportSummary {
   noShowRate: number;
   uniqueClients: number;
   averageRevenuePerDay: number;
+}
+
+// ─── Social marketing ────────────────────────────────────────────────────
+
+export type SocialPostStatus = 'Draft' | 'Scheduled' | 'Published' | 'Failed';
+
+export interface SocialPost {
+  id: string;
+  scheduledAt: string;
+  topic: string;
+  caption: string;
+  hashtags: string;
+  imagePrompt?: string | null;
+  imageUrl?: string | null;
+  status: SocialPostStatus;
+  publishedAt?: string | null;
+  failureReason?: string | null;
+  instagramMediaId?: string | null;
+}
+
+export interface RegenerateImageQueued {
+  postId: string;
+  status: string;
+  message: string;
+}
+
+export interface SocialPostsWeek {
+  posts: SocialPost[];
+  instagramConnected: boolean;
+  instagramUsername?: string | null;
+  openAiConfigured?: boolean;
+}
+
+export interface SocialConfig {
+  openAiConfigured: boolean;
+  openAiImagesEnabled: boolean;
+  openAiEnabled: boolean;
+  hasApiKeyInConfig: boolean;
+  apiKeyLength: number;
+  keySource: string;
+  lastOpenAiError?: string | null;
+}
+
+export interface OpenAiTestResult {
+  success: boolean;
+  message: string;
+  hasApiKeyInConfig: boolean;
+  apiKeyLength: number;
+  keySource: string;
+}
+
+export interface SocialDbDiagnostics {
+  databaseName: string;
+  serverName: string;
+  socialPostsTableExists: boolean;
+  tenantInstagramAccountsTableExists: boolean;
+  socialPostsColumns: string[];
+  tenantInstagramColumns: string[];
+  socialPostsRowCount?: number | null;
+  socialPostsQueryError?: string | null;
+  tenantInstagramQueryError?: string | null;
+}
+
+export interface SocialSchemaBootstrapResult {
+  success: boolean;
+  steps: string[];
+}
+
+export interface InstagramConnectionStatus {
+  isConnected: boolean;
+  username?: string | null;
+  tokenExpiresAt?: string | null;
+}
+
+export interface UpdateSocialPostRequest {
+  caption: string;
+  hashtags: string;
+  scheduledAt: string;
+}
+
+export interface SocialGalleryImage {
+  id: string;
+  fileName: string;
+  imageUrl: string;
+  captionHint?: string | null;
+  fileSizeBytes: number;
+  createdAt: string;
+}
+
+export interface CreatePostFromGalleryResult {
+  post: SocialPost;
+}
+
+export interface CreateGalleryAiVariantRequest {
+  prompt: string;
+  captionHint?: string | null;
+}
+
+export interface CreateGalleryAiVariantResult {
+  post: SocialPost;
+  status: string;
+  message: string;
+}
+
+export interface TenantBranding {
+  slug: string;
+  name: string;
+  logoUrl?: string | null;
+  primaryColor?: string | null;
+  accentColor?: string | null;
+  onlineBookingEnabled: boolean;
+  canUseOnlineBooking: boolean;
+  publicBookingUrl?: string | null;
+}
+
+export interface UpdateTenantBrandingRequest {
+  primaryColor?: string | null;
+  accentColor?: string | null;
+  onlineBookingEnabled: boolean;
 }

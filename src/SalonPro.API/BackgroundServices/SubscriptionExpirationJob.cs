@@ -1,5 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SalonPro.Application.Common;
 using SalonPro.Application.Common.Interfaces;
+using SalonPro.Domain.Entities;
 using SalonPro.Infrastructure.Persistence;
 
 namespace SalonPro.API.BackgroundServices;
@@ -110,6 +115,9 @@ public class SubscriptionExpirationJob : BackgroundService
 
         foreach (var tenant in warningTenants)
         {
+            if (ShouldDeferShortTrialWarning(tenant, now))
+                continue;
+
             try
             {
                 var daysLeft = (int)Math.Ceiling((tenant.SubscriptionEndDate!.Value - now).TotalDays);
@@ -153,5 +161,28 @@ public class SubscriptionExpirationJob : BackgroundService
             await context.SaveChangesAsync(cancellationToken);
             _logger.LogInformation("Reactivated {Count} tenant(s) with renewed subscriptions.", reactivatedTenants.Count);
         }
+    }
+
+    /// <summary>
+    /// Demo / very short trials: send the "uskoro ističe" email only in the last ~24h, not on day 1
+    /// (avoids duplicating the welcome email that already states the end date).
+    /// </summary>
+    private static bool ShouldDeferShortTrialWarning(Tenant tenant, DateTime nowUtc)
+    {
+        if (!tenant.SubscriptionEndDate.HasValue || tenant.SubscriptionEndDate.Value <= nowUtc)
+            return false;
+
+        var isShortPeriod = string.Equals(tenant.Plan, TenantPlanRules.Demo, StringComparison.OrdinalIgnoreCase);
+        if (!isShortPeriod && tenant.SubscriptionStartDate.HasValue)
+        {
+            var period = tenant.SubscriptionEndDate.Value - tenant.SubscriptionStartDate.Value;
+            isShortPeriod = period.TotalDays > 0 && period.TotalDays <= 4;
+        }
+
+        if (!isShortPeriod)
+            return false;
+
+        var hoursLeft = (tenant.SubscriptionEndDate.Value - nowUtc).TotalHours;
+        return hoursLeft > 24;
     }
 }

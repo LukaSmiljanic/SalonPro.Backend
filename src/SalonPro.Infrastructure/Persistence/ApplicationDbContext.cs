@@ -31,6 +31,9 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<LoyaltyConfig> LoyaltyConfigs => Set<LoyaltyConfig>();
+    public DbSet<SocialPost> SocialPosts => Set<SocialPost>();
+    public DbSet<TenantInstagramAccount> TenantInstagramAccounts => Set<TenantInstagramAccount>();
+    public DbSet<SocialGalleryImage> SocialGalleryImages => Set<SocialGalleryImage>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

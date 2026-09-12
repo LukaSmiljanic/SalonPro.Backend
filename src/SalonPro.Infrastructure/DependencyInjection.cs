@@ -11,6 +11,12 @@ using SalonPro.Infrastructure.Persistence;
 using SalonPro.Infrastructure.Persistence.Interceptors;
 using SalonPro.Infrastructure.Services;
 using SalonPro.Infrastructure.Sms;
+using Microsoft.AspNetCore.DataProtection;
+using SalonPro.Infrastructure.Meta;
+using SalonPro.Infrastructure.OpenAi;
+using SalonPro.Infrastructure.Security;
+using SalonPro.Infrastructure.Social;
+using SalonPro.Infrastructure.Storage;
 
 namespace SalonPro.Infrastructure;
 
@@ -58,6 +64,65 @@ public static class DependencyInjection
         // ── Repository / UnitOfWork ──────────────────────────────────
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
+        services.AddScoped<ISocialSchemaBootstrapper, SocialSchemaBootstrapper>();
+        services.AddScoped<ISocialDatabaseDiagnostics, SocialDatabaseDiagnostics>();
+
+        // ── Social / OpenAI / Instagram ───────────────────────────────
+        var dpBuilder = services.AddDataProtection().SetApplicationName("SalonPro");
+        foreach (var dpKeysDir in GetDataProtectionKeyDirectories())
+        {
+            try
+            {
+                Directory.CreateDirectory(dpKeysDir);
+                dpBuilder.PersistKeysToFileSystem(new DirectoryInfo(dpKeysDir));
+                break;
+            }
+            catch
+            {
+                // Monster shared hosting may block ../data — try next path.
+            }
+        }
+
+        services.AddSingleton<IOAuthStateService, HmacOAuthStateService>();
+        services.Configure<OpenAiSettings>(configuration.GetSection(OpenAiSettings.SectionName));
+        services.PostConfigure<OpenAiSettings>(options =>
+        {
+            var envKey = Environment.GetEnvironmentVariable("OpenAI__ApiKey");
+            if (!string.IsNullOrWhiteSpace(envKey))
+            {
+                options.ApiKey = envKey.Trim();
+                options.KeySource = "environment";
+            }
+            else if (!string.IsNullOrWhiteSpace(options.ApiKey))
+            {
+                options.ApiKey = options.ApiKey.Trim();
+                options.KeySource = "appsettings";
+            }
+            else
+            {
+                options.KeySource = "none";
+            }
+        });
+        services.Configure<MetaSettings>(configuration.GetSection(MetaSettings.SectionName));
+        services.Configure<SocialStorageSettings>(configuration.GetSection(SocialStorageSettings.SectionName));
+        services.AddScoped<ISecretProtector, DataProtectionSecretProtector>();
+        services.AddHttpClient<OpenAiService>(c => c.Timeout = TimeSpan.FromMinutes(6));
+        services.AddHttpClient("OpenAiImageFetch", c =>
+        {
+            c.Timeout = TimeSpan.FromMinutes(3);
+            c.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "SalonPro/1.0");
+        });
+        services.AddScoped<IOpenAiService>(sp => sp.GetRequiredService<OpenAiService>());
+        services.AddHttpClient("MetaGraph", c => c.BaseAddress = new Uri("https://graph.facebook.com/"));
+        services.AddSingleton<IInstagramOAuthQueue, InstagramOAuthCompletionQueue>();
+        services.AddScoped<IInstagramService, InstagramGraphService>();
+        services.AddScoped<IMediaStorageService, LocalMediaStorageService>();
+        services.AddScoped<ISocialPublishService, SocialPublishService>();
+        services.AddScoped<SalonSocialContentGenerator>();
+        services.AddScoped<ISocialContentGenerator, OpenAiSocialContentGenerator>();
+
+        services.AddSingleton<SocialImageGenerationQueue>();
+        services.AddSingleton<ISocialImageQueue>(sp => sp.GetRequiredService<SocialImageGenerationQueue>());
 
         // ── JWT Authentication ───────────────────────────────────────
         var jwtSettings = configuration.GetSection("JwtSettings");
@@ -99,5 +164,12 @@ public static class DependencyInjection
         });
 
         return services;
+    }
+
+    private static IEnumerable<string> GetDataProtectionKeyDirectories()
+    {
+        yield return Path.Combine(AppContext.BaseDirectory, "..", "data", "dp-keys");
+        yield return Path.Combine(AppContext.BaseDirectory, "data", "dp-keys");
+        yield return Path.Combine(Path.GetTempPath(), "SalonPro", "dp-keys");
     }
 }

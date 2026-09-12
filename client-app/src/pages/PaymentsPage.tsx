@@ -19,6 +19,7 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
 import { Modal } from '../components/Modal';
 import { Input } from '../components/Input';
+import { DateInput } from '../components/DateInput';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -223,8 +224,8 @@ const CreatePaymentModal: React.FC<CreatePaymentModalProps> = ({ open, onClose, 
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Input label="Period od" type="date" value={periodStart} onChange={e => setPeriodStart(e.target.value)} />
-          <Input label="Period do" type="date" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} />
+          <DateInput label="Period od" value={periodStart} onChange={setPeriodStart} />
+          <DateInput label="Period do" value={periodEnd} onChange={setPeriodEnd} />
         </div>
 
         {/* Status select */}

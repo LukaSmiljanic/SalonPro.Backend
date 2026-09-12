@@ -49,11 +49,11 @@ public class PublicBookingController : ControllerBase
         var ctx = await _mediator.Send(new GetPublicBookingContextQuery(slug), cancellationToken);
         if (ctx == null)
             return NotFound();
-        if (!TenantPlanRules.CanUseOnlineBooking(ctx.Plan))
+        if (!ctx.Salon.OnlineBookingEnabled)
             return StatusCode(StatusCodes.Status403Forbidden, new
             {
                 title = "Online zakazivanje nije dostupno.",
-                detail = "Nadogradite paket salona da biste uključili online zakazivanje."
+                detail = "Salon je privremeno isključio online zakazivanje."
             });
 
         _currentTenant.SetTenant(ctx.TenantId);
@@ -69,11 +69,11 @@ public class PublicBookingController : ControllerBase
         var ctx = await _mediator.Send(new GetPublicBookingContextQuery(slug), cancellationToken);
         if (ctx == null)
             return NotFound();
-        if (!TenantPlanRules.CanUseOnlineBooking(ctx.Plan))
+        if (!ctx.Salon.OnlineBookingEnabled)
             return StatusCode(StatusCodes.Status403Forbidden, new
             {
                 title = "Online zakazivanje nije dostupno.",
-                detail = "Nadogradite paket salona da biste uključili online zakazivanje."
+                detail = "Salon je privremeno isključio online zakazivanje ili paket ne podržava online rezervacije."
             });
 
         _currentTenant.SetTenant(ctx.TenantId);
@@ -105,11 +105,11 @@ public class PublicBookingController : ControllerBase
         var ctx = await _mediator.Send(new GetPublicBookingContextQuery(slug), cancellationToken);
         if (ctx == null)
             return NotFound();
-        if (!TenantPlanRules.CanUseOnlineBooking(ctx.Plan))
+        if (!ctx.Salon.OnlineBookingEnabled)
             return StatusCode(StatusCodes.Status403Forbidden, new
             {
                 title = "Online zakazivanje nije dostupno.",
-                detail = "Nadogradite paket salona da biste uključili online zakazivanje."
+                detail = "Salon je privremeno isključio online zakazivanje ili paket ne podržava online rezervacije."
             });
 
         _currentTenant.SetTenant(ctx.TenantId);

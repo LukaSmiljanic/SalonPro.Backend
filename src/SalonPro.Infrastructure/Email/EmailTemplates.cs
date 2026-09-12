@@ -248,6 +248,43 @@ public static class EmailTemplates
         return BaseLayout("Pretplata je istekla", DangerColor, "🔒", body, tenantName);
     }
 
+    public static string DemoAccessWelcome(
+        string tenantName,
+        string loginUrl,
+        string loginEmail,
+        string temporaryPassword,
+        string expirationDateLocal,
+        int trialDays)
+    {
+        var body = $@"
+            <p style=""margin:0 0 8px;color:{DarkText};font-size:16px;"">Zdravo,</p>
+            <p style=""margin:0 0 20px;color:{MutedText};font-size:14px;line-height:1.6;"">
+              Otvorili smo Vam <strong>demo nalog</strong> za salon <strong>{tenantName}</strong>.
+              Pristup aplikaciji je aktivan <strong>{trialDays} dana</strong> (do <strong>{expirationDateLocal}</strong> po Beogradu).
+            </p>
+            <div style=""background-color:{LightBg};border-radius:8px;padding:20px;margin:20px 0;"">
+              <table role=""presentation"" width=""100%"" cellpadding=""0"" cellspacing=""0"">
+                {DetailRow("📧 Email za prijavu", System.Net.WebUtility.HtmlEncode(loginEmail))}
+                {DetailRow("🔑 Privremena lozinka", System.Net.WebUtility.HtmlEncode(temporaryPassword))}
+              </table>
+            </div>
+            <p style=""margin:0 0 12px;color:{MutedText};font-size:13px;line-height:1.5;"">
+              Posle isteka roka nalog se automatski deaktivira. Javite nam se ako želite punu pretplatu.
+            </p>
+            <p style=""margin:0 0 20px;color:{MutedText};font-size:13px;line-height:1.5;"">
+              U <strong>poslednjih 24 sata</strong> pretplate poslaćemo Vam još jedan mejl sa podsetnikom.
+            </p>
+            <div style=""text-align:center;margin:28px 0;"">
+              <a href=""{System.Net.WebUtility.HtmlEncode(loginUrl)}"" 
+                 style=""display:inline-block;background-color:{PrimaryColor};color:#ffffff;font-size:16px;font-weight:600;text-decoration:none;padding:14px 36px;border-radius:8px;"">
+                Prijava u SalonPro
+              </a>
+            </div>
+            <p style=""margin:0;color:{PrimaryColor};font-size:13px;word-break:break-all;"">{System.Net.WebUtility.HtmlEncode(loginUrl)}</p>";
+
+        return BaseLayout("Vaš SalonPro demo", PrimaryColor, "✨", body, tenantName);
+    }
+
     public static string PasswordReset(string resetUrl)
     {
         var body = $@"

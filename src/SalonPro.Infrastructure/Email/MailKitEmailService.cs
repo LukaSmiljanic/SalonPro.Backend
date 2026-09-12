@@ -79,6 +79,35 @@ public class MailKitEmailService : IEmailService
         await SendEmailAsync(toEmail, "Resetovanje lozinke — SalonPro", html, cancellationToken);
     }
 
+    public async Task SendDemoAccessEmailAsync(
+        string toEmail,
+        string tenantName,
+        string loginUrl,
+        string loginEmail,
+        string temporaryPassword,
+        DateTime subscriptionEndsUtc,
+        int trialDays,
+        CancellationToken cancellationToken = default)
+    {
+        TimeZoneInfo tz;
+        try
+        {
+            tz = TimeZoneInfo.FindSystemTimeZoneById("Europe/Belgrade");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            tz = TimeZoneInfo.Utc;
+        }
+
+        var localEnd = TimeZoneInfo.ConvertTimeFromUtc(subscriptionEndsUtc, tz);
+        var expirationStr = localEnd.ToString("dd.MM.yyyy HH:mm");
+
+        var html = EmailTemplates.DemoAccessWelcome(
+            tenantName, loginUrl, loginEmail, temporaryPassword, expirationStr, trialDays);
+
+        await SendEmailAsync(toEmail, $"SalonPro demo nalog — {trialDays} dana", html, cancellationToken);
+    }
+
     private async Task SendEmailAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken)
     {
         if (!_settings.Enabled)

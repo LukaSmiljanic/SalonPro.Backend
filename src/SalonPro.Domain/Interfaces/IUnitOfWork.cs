@@ -16,6 +16,9 @@ public interface IUnitOfWork : IDisposable
     IRepository<WorkingHours> WorkingHours { get; }
     IRepository<Payment> Payments { get; }
     IRepository<LoyaltyConfig> LoyaltyConfigs { get; }
+    IRepository<SocialPost> SocialPosts { get; }
+    IRepository<TenantInstagramAccount> TenantInstagramAccounts { get; }
+    IRepository<SocialGalleryImage> SocialGalleryImages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

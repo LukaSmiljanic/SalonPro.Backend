@@ -30,4 +30,5 @@ public class TenantPlanFeaturesDto
 {
     public bool CanUseOnlineBooking { get; set; }
     public int MaxStaffMembers { get; set; }
+    public bool CanUseSocialMarketing { get; set; }
 }

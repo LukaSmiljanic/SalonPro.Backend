@@ -11,6 +11,7 @@ import { KpiCard } from '../components/KpiCard';
 import { Button } from '../components/Button';
 import { LoadingSpinner } from '../components/LoadingSpinner';
 import { EmptyState } from '../components/EmptyState';
+import { DateInput } from '../components/DateInput';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────────────
 
@@ -219,27 +220,11 @@ export const ReportsPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
             <label className="text-xs text-text-muted shrink-0">Od</label>
-            <input
-              type="date"
-              value={dateFrom}
-              max={dateTo}
-              onChange={e => setDateFrom(e.target.value)}
-              className="h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3
-                text-base md:text-sm text-text
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
-            />
+            <DateInput value={dateFrom} max={dateTo} onChange={setDateFrom} />
           </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-text-muted shrink-0">Do</label>
-            <input
-              type="date"
-              value={dateTo}
-              min={dateFrom}
-              onChange={e => setDateTo(e.target.value)}
-              className="h-11 md:h-9 bg-surface border border-border rounded-lg md:rounded-md px-3
-                text-base md:text-sm text-text
-                focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-interactive"
-            />
+            <DateInput value={dateTo} min={dateFrom} onChange={setDateTo} />
           </div>
           <Button
             variant="secondary"

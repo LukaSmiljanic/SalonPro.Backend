@@ -1,6 +1,27 @@
 <!doctype html>
 <html lang="sr">
   <head>
+    <script>
+      (function () {
+        try {
+          var prefs = JSON.parse(localStorage.getItem('salonpro-theme-prefs') || '{}');
+          var token = localStorage.getItem('salonpro_token');
+          var userId = null;
+          if (token) {
+            var p = token.split('.')[1];
+            if (p) {
+              var b = p.replace(/-/g, '+').replace(/_/g, '/');
+              var pl = JSON.parse(atob(b));
+              userId = pl.sub || pl['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+            }
+          }
+          var key = userId ? userId : 'guest';
+          var theme = prefs[key];
+          if (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+          if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+        } catch (e) {}
+      })();
+    </script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

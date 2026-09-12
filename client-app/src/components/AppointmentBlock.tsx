@@ -20,6 +20,15 @@ const categoryClass: Record<string, string> = {
   Lepota: 'appt-block-lepota',
 };
 
+const statusClass: Partial<Record<Appointment['status'], string>> = {
+  Pending: 'appt-block-pending',
+  Confirmed: 'appt-block-confirmed',
+  InProgress: 'appt-block-in-progress',
+  Completed: 'appt-block-completed',
+  Cancelled: 'appt-block-cancelled',
+  NoShow: 'appt-block-no-show',
+};
+
 export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   appointment,
   topPx,
@@ -29,7 +38,7 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   onClick,
   onDragStart,
 }) => {
-  const cls = categoryClass[appointment.serviceCategory] ?? 'appt-block-default';
+  const cls = statusClass[appointment.status] ?? categoryClass[appointment.serviceCategory] ?? 'appt-block-default';
   const isDraggingRef = useRef(false);
   const startYRef = useRef(0);
 
@@ -70,6 +79,11 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
       }
     : undefined;
 
+  const compact = heightPx < 46;
+  const padY = compact ? 2 : 4;
+  const padX = compact ? 5 : 6;
+  const boxHeight = Math.max(heightPx - 4, 26);
+
   const visitTitle =
     typeof appointment.visitNumber === 'number'
       ? ` · ${appointment.visitNumber}. poseta${appointment.isLoyaltyMilestoneVisit ? ' (jubilarna / loyalty prag)' : ''}`
@@ -78,7 +92,12 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
   return (
     <div
       className={`appt-block ${cls} relative ${appointment.isLoyaltyMilestoneVisit ? 'ring-2 ring-amber-500/85 z-[5]' : ''}`}
-      style={{ top: topPx, height: Math.max(heightPx - 4, 20), ...layoutStyle }}
+      style={{
+        top: topPx,
+        height: boxHeight,
+        padding: `${padY}px ${padX}px`,
+        ...layoutStyle,
+      }}
       onMouseDown={handleMouseDown}
       title={`${appointment.clientName} – ${appointment.serviceName}${appointment.staffName ? ` (${appointment.staffName})` : ''}${visitTitle}`}
     >
@@ -90,10 +109,14 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
           ★
         </span>
       )}
-      <p className="text-[11px] font-semibold leading-tight truncate pr-4">{appointment.clientName}</p>
-      {typeof appointment.visitNumber === 'number' && heightPx > 24 && (
+      <p
+        className={`font-semibold leading-tight truncate pr-4 ${compact ? 'text-[10px]' : 'text-[11px]'}`}
+      >
+        {appointment.clientName}
+      </p>
+      {typeof appointment.visitNumber === 'number' && heightPx > 20 && (
         <p
-          className={`text-[9px] leading-tight truncate ${
+          className={`leading-tight truncate ${compact ? 'text-[8px]' : 'text-[9px]'} ${
             appointment.isLoyaltyMilestoneVisit ? 'text-amber-900 font-semibold' : 'opacity-75'
           }`}
         >
@@ -101,11 +124,17 @@ export const AppointmentBlock: React.FC<AppointmentBlockProps> = ({
           {appointment.isLoyaltyMilestoneVisit ? ' · jubilej' : ''}
         </p>
       )}
-      {showStaffLabel && appointment.staffName && heightPx > 26 && (
-        <p className="text-[9px] leading-tight truncate opacity-75 font-medium">{appointment.staffName}</p>
+      {showStaffLabel && appointment.staffName && heightPx > 22 && (
+        <p
+          className={`leading-tight truncate opacity-75 font-medium ${compact ? 'text-[8px]' : 'text-[9px]'}`}
+        >
+          {appointment.staffName}
+        </p>
       )}
-      {heightPx > 30 && (
-        <p className="text-[10px] leading-tight truncate opacity-80">{appointment.serviceName}</p>
+      {heightPx > 18 && (
+        <p className={`leading-tight truncate opacity-80 ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
+          {appointment.serviceName}
+        </p>
       )}
     </div>
   );

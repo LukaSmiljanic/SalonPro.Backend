@@ -1,14 +1,18 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using SalonPro.API.BackgroundServices;
 using SalonPro.API.Filters;
 using SalonPro.API.Middleware;
 using SalonPro.Application;
 using SalonPro.Infrastructure;
+using SalonPro.Application.Common.Interfaces;
+using SalonPro.Infrastructure.OpenAi;
 using SalonPro.Infrastructure.Persistence;
 using SalonPro.Infrastructure.Seed;
-using SalonPro.Application.Common.Interfaces;
+using SalonPro.Infrastructure.Social;
+using SalonPro.Infrastructure.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -63,6 +67,7 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHostedService<CompletePastAppointmentsJob>();
 builder.Services.AddHostedService<AppointmentReminderJob>();
 builder.Services.AddHostedService<SubscriptionExpirationJob>();
+builder.Services.AddHostedService<SocialPostPublishJob>();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -76,6 +81,39 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Log OpenAI config status at startup (never log the key itself).
+{
+    var openAi = app.Configuration.GetSection(OpenAiSettings.SectionName).Get<OpenAiSettings>() ?? new OpenAiSettings();
+    var envKey = Environment.GetEnvironmentVariable("OpenAI__ApiKey");
+    var hasKey = !string.IsNullOrWhiteSpace(envKey) || !string.IsNullOrWhiteSpace(openAi.ApiKey);
+    app.Logger.LogInformation(
+        "OpenAI startup: Enabled={Enabled}, HasKey={HasKey}, GenerateImages={Images}",
+        openAi.Enabled, hasKey, openAi.GenerateImages);
+}
+
+// ── Social media static files (public images for Instagram) ─────────────
+var socialSettings = builder.Configuration.GetSection(SocialStorageSettings.SectionName).Get<SocialStorageSettings>()
+    ?? new SocialStorageSettings();
+var socialRoot = LocalMediaStorageService.GetPhysicalRoot(app.Environment, socialSettings);
+try
+{
+    Directory.CreateDirectory(socialRoot);
+}
+catch (Exception ex)
+{
+    app.Logger.LogWarning(ex, "Could not create social media folder at {Path}", socialRoot);
+}
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(socialRoot),
+    RequestPath = "/media/social",
+    ServeUnknownFileTypes = false,
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.CacheControl = "public,max-age=86400";
+    },
+});
 
 // ── Middleware pipeline ───────────────────────────────────────────────────
 //if (app.Environment.IsDevelopment())
@@ -91,27 +129,48 @@ if (!app.Environment.IsProduction())
 
 //app.UseHttpsRedirection();
 app.UseCors();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<SubscriptionCheckMiddleware>();
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+app.MapGet("/health", () => Results.Ok(new { status = "ok", utc = DateTime.UtcNow }));
 app.MapControllers();
 
-// ── Seed database ─────────────────────────────────────────────────────────
-using (var scope = app.Services.CreateScope())
+// ── Database bootstrap (non-blocking — API listens while DB seed runs) ───
+_ = Task.Run(async () =>
 {
     try
     {
-        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await RunStartupBootstrapAsync(app);
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogError(ex, "Startup bootstrap failed");
+    }
+});
+
+app.Run();
+
+static async Task RunStartupBootstrapAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var schema = scope.ServiceProvider.GetRequiredService<ISocialSchemaBootstrapper>();
+    var schemaResult = await schema.EnsureAsync();
+    if (!schemaResult.Success)
+        logger.LogWarning("Social schema bootstrap incomplete: {Steps}", string.Join("; ", schemaResult.Steps));
+
+    try
+    {
         var passwordService = scope.ServiceProvider.GetRequiredService<IPasswordService>();
         await DatabaseSeeder.SeedAsync(context, passwordService);
 
-        // Data-fix: ensure all tenants use RSD currency (was accidentally defaulting to EUR)
         await context.Database.ExecuteSqlRawAsync(
             "UPDATE Tenants SET Currency = 'RSD' WHERE Currency = 'EUR' OR Currency IS NULL");
 
-        // Schema-fix: add PasswordResetToken columns to Users if missing
         await context.Database.ExecuteSqlRawAsync(@"
             IF COL_LENGTH('Users', 'PasswordResetToken') IS NULL
             BEGIN
@@ -137,9 +196,6 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Exception ex)
     {
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "Error during database migration/seed");
     }
 }
-
-app.Run();

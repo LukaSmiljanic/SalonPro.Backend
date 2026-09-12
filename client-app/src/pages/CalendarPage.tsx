@@ -19,8 +19,9 @@ import { LoadingSpinner } from '../components/LoadingSpinner';
 import { Modal } from '../components/Modal';
 import { CreateAppointmentModal } from '../components/CreateAppointmentModal';
 
-const HOUR_HEIGHT = 60;
-const FALLBACK_DAY_START = 8;
+/** Pixels per hour in the calendar grid — higher = shorter appointments stay more readable. */
+const HOUR_HEIGHT = 88;
+const FALLBACK_DAY_START = 6;
 const FALLBACK_DAY_END   = 22;
 const SNAP_MINUTES = 15;
 const SNAP_PX = HOUR_HEIGHT * (SNAP_MINUTES / 60); // 15px per 15 min
@@ -178,8 +179,8 @@ export const CalendarPage: React.FC = () => {
       return m > 0 ? h + 1 : h;
     }));
     return {
-      start: isNaN(minHour) ? FALLBACK_DAY_START : Math.max(0, minHour),
-      end: isNaN(maxHour) ? FALLBACK_DAY_END : Math.min(24, maxHour),
+      start: isNaN(minHour) ? FALLBACK_DAY_START : Math.min(FALLBACK_DAY_START, minHour),
+      end: isNaN(maxHour) ? FALLBACK_DAY_END : Math.max(FALLBACK_DAY_END, maxHour),
     };
   }, [workingHoursData]);
 
@@ -297,7 +298,7 @@ export const CalendarPage: React.FC = () => {
       const durationMinutes = (end.getTime() - start.getTime()) / (60 * 1000);
       return {
         top: Math.max(0, (minutesFromStart / 60) * HOUR_HEIGHT),
-        height: Math.max(20, (durationMinutes / 60) * HOUR_HEIGHT),
+        height: Math.max(26, (durationMinutes / 60) * HOUR_HEIGHT),
       };
     } catch {
       return { top: 0, height: HOUR_HEIGHT };
@@ -416,7 +417,7 @@ export const CalendarPage: React.FC = () => {
     : '';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-56px)]">
+    <div className="flex flex-col h-[calc(100vh-56px)] min-h-0">
 
       {/* Toolbar */}
       <div className="container-main py-3 flex items-center gap-3 border-b border-divider flex-wrap">
@@ -484,6 +485,34 @@ export const CalendarPage: React.FC = () => {
           </div>
         )}
 
+        {/* Status legend */}
+        <div className="flex items-center gap-2 text-[11px] text-text-faint overflow-x-auto whitespace-nowrap max-w-full">
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-warning" />
+            Zakazan
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            Potvrđen
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-[var(--color-in-progress)]" />
+            U toku
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-success" />
+            Završen
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-error" />
+            No-show
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-text-faint" />
+            Otkazan
+          </span>
+        </div>
+
         <div className="ml-auto flex items-center gap-2">
           <Button
             variant="secondary"
@@ -507,7 +536,7 @@ export const CalendarPage: React.FC = () => {
       )}
 
       {/* Calendar grid */}
-      <div className="flex-1 overflow-auto" ref={gridScrollRef}>
+      <div className="flex-1 overflow-auto min-h-0" ref={gridScrollRef}>
         {/* Desktop: full week, Mobile: single day */}
         <div className="hidden md:block min-w-[700px]">
 
@@ -618,7 +647,7 @@ export const CalendarPage: React.FC = () => {
                           {/* Original position — faded */}
                           <div
                             className="appt-block appt-block-default opacity-20 pointer-events-none"
-                            style={{ top, height: Math.max(height - 4, 20), ...colStyle }}
+                            style={{ top, height: Math.max(height - 4, 26), ...colStyle }}
                           >
                             <p className="text-[11px] font-semibold leading-tight truncate">{appt.clientName}</p>
                           </div>
@@ -627,7 +656,7 @@ export const CalendarPage: React.FC = () => {
                             className="appt-block appt-block-default pointer-events-none border-2 border-primary shadow-lg"
                             style={{
                               top: dragState.ghostTop,
-                              height: Math.max(height - 4, 20),
+                              height: Math.max(height - 4, 26),
                               zIndex: 50,
                               opacity: 0.9,
                               ...colStyle,
